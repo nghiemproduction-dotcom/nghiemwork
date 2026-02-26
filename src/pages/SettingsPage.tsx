@@ -61,6 +61,9 @@ export default function SettingsPage() {
     { label: 'Vừa', value: 1 },
     { label: 'Lớn', value: 1.15 },
     { label: 'Rất lớn', value: 1.3 },
+    { label: 'Lớn+', value: 1.5 },
+    { label: 'Rất lớn+', value: 1.75 },
+    { label: 'Cực lớn', value: 2 },
   ];
 
   const handleClear = () => {
@@ -258,7 +261,7 @@ export default function SettingsPage() {
           <span className="text-sm font-medium text-[var(--text-primary)]">Cỡ chữ</span>
           <span className="text-xs font-mono text-[var(--accent-primary)] tabular-nums ml-auto">{Math.round(fontScale * 100)}%</span>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
           {fontSizes.map(({ label, value }) => (
             <button key={value} onClick={() => setFontScale(value)}
               className={`py-2.5 rounded-lg text-xs font-medium min-h-[44px] ${
@@ -272,7 +275,7 @@ export default function SettingsPage() {
           <button onClick={() => setFontScale(Math.max(0.7, Math.round((fontScale - 0.05) * 100) / 100))}
             className="size-10 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)]"><Minus size={16} /></button>
           <p className="text-[var(--text-primary)] font-medium" style={{ fontSize: `${16 * fontScale}px` }}>Xem trước</p>
-          <button onClick={() => setFontScale(Math.min(1.5, Math.round((fontScale + 0.05) * 100) / 100))}
+          <button onClick={() => setFontScale(Math.min(2, Math.round((fontScale + 0.05) * 100) / 100))}
             className="size-10 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)]"><PlusIcon size={16} /></button>
         </div>
       </div>

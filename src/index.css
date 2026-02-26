@@ -93,8 +93,8 @@
     width: 100%;
     min-height: 100%;
     min-height: 100dvh;
-    /* Base 16px × font-scale; clamp ensures readable size on all devices (Samsung S22 Ultra, iOS, desktop) */
-    font-size: clamp(14px, calc(16px * var(--font-scale)), 24px);
+    /* Base 16px × font-scale; cap 36px để hỗ trợ cỡ Cực lớn (2×) trên Samsung / mobile */
+    font-size: clamp(14px, calc(16px * var(--font-scale)), 36px);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -196,13 +196,13 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* Ensure readable size on small phones */
 @media screen and (max-width: 420px) {
   html {
-    font-size: clamp(14px, calc(16px * var(--font-scale)), 22px);
+    font-size: clamp(14px, calc(16px * var(--font-scale)), 32px);
   }
 }
 
-/* Large phones (e.g. Samsung S22 Ultra): prevent tiny text when viewport is wide */
+/* Large phones (e.g. Samsung S22 Ultra): nền tảng lớn hơn, cap 36px cho cỡ Cực lớn */
 @media screen and (min-width: 360px) and (max-width: 480px) {
   html {
-    font-size: clamp(16px, calc(17px * var(--font-scale)), 24px);
+    font-size: clamp(16px, calc(17px * var(--font-scale)), 36px);
   }
 }
