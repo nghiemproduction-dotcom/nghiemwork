@@ -17,8 +17,8 @@ export function BottomNav() {
   const overdueCount = useTaskStore(s => s.tasks.filter(t => t.status === 'overdue').length);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-[var(--border-subtle)]">
-      <div className="max-w-lg mx-auto flex items-center">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-[var(--border-subtle)] pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-lg mx-auto flex items-center w-full">
         {NAV_ITEMS.map(({ page, icon: Icon, label }) => {
           const isActive = currentPage === page;
           return (

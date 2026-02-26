@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useSettingsStore, useAuthStore, useTaskStore, useChatStore, useGamificationStore, useTemplateStore } from '@/stores';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { checkDeadlineNotifications } from '@/lib/notifications';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
@@ -42,17 +42,25 @@ export default function App() {
     }
   }, []);
 
-  // Auth session
+  // Nếu thiếu cấu hình Supabase (VD: chưa set env trên Vercel), báo và dừng loading
   useEffect(() => {
+    if (!isSupabaseConfigured) setLoading(false);
+  }, []);
+
+  // Auth session (chỉ chạy khi đã cấu hình Supabase)
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
     let mounted = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted && session?.user) {
-        const u = session.user;
-        setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
-      } else if (mounted) {
-        setLoading(false);
-      }
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (mounted && session?.user) {
+          const u = session.user;
+          setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
+        } else if (mounted) {
+          setLoading(false);
+        }
+      })
+      .catch(() => { if (mounted) setLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === 'SIGNED_IN' && session?.user) {
@@ -95,6 +103,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user?.id, tasks.length, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
 
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-base)] p-6">
+        <div className="flex flex-col items-center gap-4 max-w-sm text-center">
+          <div className="size-14 rounded-2xl bg-amber-500/20 flex items-center justify-center border border-amber-500/40">
+            <span className="text-2xl">⚙️</span>
+          </div>
+          <h1 className="text-lg font-semibold text-[var(--text)]">Thiếu cấu hình</h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            Ứng dụng cần biến môi trường Supabase. Trong Vercel: Settings → Environment Variables, thêm <code className="bg-[var(--bg-elevated)] px-1 rounded">VITE_SUPABASE_URL</code> và <code className="bg-[var(--bg-elevated)] px-1 rounded">VITE_SUPABASE_ANON_KEY</code> (lấy từ Supabase Dashboard), rồi redeploy.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-base)]">
@@ -123,10 +147,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden">
+    <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       <InstallPrompt />
       <TaskTimer />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">{renderPage()}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">{renderPage()}</main>
       <BottomNav />
     </div>
   );

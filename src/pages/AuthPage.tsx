@@ -102,7 +102,7 @@ export default function AuthPage() {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyOtp()}
                 placeholder="Mã OTP"
-                className="w-full bg-[var(--bg-elevated)] rounded-xl pl-11 pr-4 py-3.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] min-h-[48px] text-center tracking-[0.5em] font-mono text-lg"
+                className="w-full bg-[var(--bg-elevated)] rounded-xl pl-11 pr-4 py-3.5 text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] min-h-[48px] text-center tracking-[0.5em] font-mono text-lg"
                 maxLength={4}
                 inputMode="numeric"
                 autoComplete="one-time-code"
