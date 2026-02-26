@@ -8,6 +8,7 @@ import type {
 } from '@/types';
 import { calculateLevel, checkAchievement, getDefaultGamificationState } from '@/lib/gamification';
 import { getNowInTimezone } from '@/lib/notifications';
+import { getNextRecurrence } from '@/lib/recurrence';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -196,12 +197,32 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set({ tasks: updated });
     }
 
-    const settingsStore = useSettingsStore.getState();
-    const task = get().tasks.find(t => t.id === id);
-    if (task) {
+    const completedTask = updated.find(t => t.id === id);
+    const timezone = loadFromStorage<string>('nw_timezone', 'Asia/Ho_Chi_Minh');
+    if (completedTask) {
       const gamStore = useGamificationStore.getState();
-      const xpFromTemplate = task.xpReward || 0;
-      gamStore.onTaskCompleted(task.quadrant, finalDuration, settingsStore.timezone, xpFromTemplate);
+      const xpFromTemplate = completedTask.xpReward || 0;
+      gamStore.onTaskCompleted(completedTask.quadrant, finalDuration, timezone, xpFromTemplate);
+
+      if (completedTask.recurring?.type !== 'none') {
+        const next = getNextRecurrence(completedTask.recurring, Date.now(), timezone);
+        if (next) {
+          get().addTask(
+            completedTask.recurringLabel ?? completedTask.title,
+            completedTask.quadrant,
+            next.deadline,
+            completedTask.recurring,
+            next.deadlineDate,
+            next.deadlineTime,
+            undefined,
+            undefined,
+            completedTask.finance,
+            completedTask.templateId,
+            completedTask.xpReward,
+            completedTask.groupTemplateId
+          );
+        }
+      }
     }
   },
 

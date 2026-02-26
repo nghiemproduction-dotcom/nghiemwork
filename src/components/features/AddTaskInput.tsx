@@ -1,17 +1,33 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTaskStore, useSettingsStore } from '@/stores';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { toast } from 'sonner';
 import { Plus, Mic, MicOff, X, Calendar, RotateCcw, ChevronDown, Clock } from 'lucide-react';
 import type { EisenhowerQuadrant, RecurringConfig, RecurringType } from '@/types';
 
 import { QUADRANT_LABELS } from '@/types';
 
-const RECURRING_OPTIONS: { value: RecurringType; label: string }[] = [
-  { value: 'none', label: 'Không lặp' },
-  { value: 'daily', label: 'Hàng ngày' },
-  { value: 'weekdays', label: 'Thứ 2-6' },
-  { value: 'weekly', label: 'Hàng tuần' },
-  { value: 'custom', label: 'Tùy chọn' },
+const RECURRING_OPTIONS: { type: RecurringType; interval?: number; label: string }[] = [
+  { type: 'none', label: 'Không lặp' },
+  { type: 'hourly', interval: 1, label: 'Hàng giờ' },
+  { type: 'hourly', interval: 2, label: 'Cách 2 giờ' },
+  { type: 'hourly', interval: 3, label: 'Cách 3 giờ' },
+  { type: 'hourly', interval: 6, label: 'Cách 6 giờ' },
+  { type: 'hourly', interval: 12, label: 'Cách 12 giờ' },
+  { type: 'daily', interval: 1, label: 'Hàng ngày' },
+  { type: 'daily', interval: 2, label: 'Cách 2 ngày' },
+  { type: 'daily', interval: 3, label: 'Cách 3 ngày' },
+  { type: 'daily', interval: 7, label: 'Cách 7 ngày' },
+  { type: 'weekdays', label: 'T2–T6' },
+  { type: 'weekly', interval: 1, label: 'Hàng tuần' },
+  { type: 'weekly', interval: 2, label: 'Cách 2 tuần' },
+  { type: 'weekly', interval: 3, label: 'Cách 3 tuần' },
+  { type: 'weekly', interval: 4, label: 'Cách 4 tuần' },
+  { type: 'monthly', interval: 1, label: 'Hàng tháng' },
+  { type: 'monthly', interval: 2, label: 'Cách 2 tháng' },
+  { type: 'monthly', interval: 3, label: 'Cách 3 tháng' },
+  { type: 'monthly', interval: 6, label: 'Cách 6 tháng' },
+  { type: 'custom', label: 'Tùy chọn' },
 ];
 
 const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -32,6 +48,7 @@ export function AddTaskInput() {
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
   const [recurringType, setRecurringType] = useState<RecurringType>('none');
+  const [recurringInterval, setRecurringInterval] = useState<number>(1);
   const [customDays, setCustomDays] = useState<number[]>([]);
 
   const addTask = useTaskStore((s) => s.addTask);
@@ -60,17 +77,20 @@ export function AddTaskInput() {
 
     const recurring: RecurringConfig = {
       type: recurringType,
+      interval: (recurringType === 'hourly' || recurringType === 'daily' || recurringType === 'weekly' || recurringType === 'monthly') ? recurringInterval : undefined,
       customDays: recurringType === 'custom' ? customDays : undefined,
       label: recurringType !== 'none' ? trimmed : undefined,
     };
 
     addTask(trimmed, quadrant, deadline, recurring, deadlineDate, deadlineTime);
+    toast.success('Đã thêm việc');
     setValue('');
     resetTranscript();
     setQuadrant('do_first');
     setDeadlineDate('');
     setDeadlineTime('');
     setRecurringType('none');
+    setRecurringInterval(1);
     setCustomDays([]);
     setShowMore(false);
   };
@@ -267,19 +287,22 @@ export function AddTaskInput() {
                 <RotateCcw size={12} /> Lặp lại
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {RECURRING_OPTIONS.map(({ value: rv, label }) => (
-                  <button
-                    key={rv}
-                    onClick={() => setRecurringType(rv)}
-                    className={`px-3 py-2 rounded-lg text-[11px] font-medium min-h-[36px] transition-colors ${
-                      recurringType === rv
-                        ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]'
-                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-transparent'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {RECURRING_OPTIONS.map((opt, idx) => {
+                  const isSelected = recurringType === opt.type && (opt.interval == null || recurringInterval === opt.interval);
+                  return (
+                    <button
+                      key={opt.type + (opt.interval ?? '') + idx}
+                      onClick={() => { setRecurringType(opt.type); if (opt.interval != null) setRecurringInterval(opt.interval); }}
+                      className={`px-2.5 py-2 rounded-lg text-[10px] font-medium min-h-[34px] transition-colors ${
+                        isSelected
+                          ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]'
+                          : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-transparent'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {recurringType === 'custom' && (

@@ -1,7 +1,11 @@
-const CACHE_NAME = 'taskflow-v2';
+const CACHE_NAME = 'nghiemwork-v1';
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll(['/', '/index.html', '/manifest.json', '/og-image.jpg'])
+    ).then(() => self.skipWaiting()).catch(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -13,14 +17,24 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request).catch(() => {
-    return new Response('Offline', { status: 503 });
-  }));
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match('/index.html').then(r => r || new Response('Offline', { status: 503, statusText: 'Offline' }))
+      )
+    );
+    return;
+  }
+  event.respondWith(
+    fetch(event.request).catch(() =>
+      caches.match(event.request).then(cached => cached || new Response('Offline', { status: 503 }))
+    )
+  );
 });
 
 // Push notification support
 self.addEventListener('push', (event) => {
-  let data = { title: 'TaskFlow', body: 'Bạn có thông báo mới' };
+  let data = { title: 'NghiemWork', body: 'Bạn có thông báo mới' };
 
   if (event.data) {
     try {
@@ -36,7 +50,7 @@ self.addEventListener('push', (event) => {
       icon: '/og-image.jpg',
       badge: '/og-image.jpg',
       vibrate: [200, 100, 200],
-      tag: data.tag || 'taskflow-push',
+      tag: data.tag || 'nghiemwork-push',
       renotify: true,
       requireInteraction: false,
     })

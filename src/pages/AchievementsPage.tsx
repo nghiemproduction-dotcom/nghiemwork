@@ -216,7 +216,13 @@ export default function AchievementsPage() {
       )}
 
       <div className="space-y-2 pb-4">
-        {state.rewards.map(reward => {
+        {state.rewards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-subtle)]">
+            <Gift size={28} className="text-[var(--text-muted)] mb-2" />
+            <p className="text-sm text-[var(--text-muted)]">Chưa có phần thưởng</p>
+            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Bấm Thêm để tạo phần thưởng đổi bằng XP</p>
+          </div>
+        ) : state.rewards.map(reward => {
           const canClaim = !reward.claimed && state.xp >= reward.xpCost;
           return (
             <div key={reward.id} className={`flex items-center gap-3 bg-[var(--bg-elevated)] rounded-xl p-3 border ${reward.claimed ? 'border-[var(--success)] opacity-60' : 'border-[var(--border-subtle)]'}`}>
@@ -234,7 +240,7 @@ export default function AchievementsPage() {
                 )}
                 {reward.claimed && <span className="text-xs text-[var(--success)] font-medium">Đã nhận</span>}
                 {reward.id.startsWith('custom_') && (
-                  <button onClick={() => removeReward(reward.id)} className="size-8 rounded-lg bg-[rgba(248,113,113,0.1)] flex items-center justify-center text-[var(--error)]">
+                  <button onClick={() => removeReward(reward.id)} className="size-8 rounded-lg bg-[rgba(248,113,113,0.1)] flex items-center justify-center text-[var(--error)]" aria-label="Xóa phần thưởng">
                     <Trash2 size={12} />
                   </button>
                 )}

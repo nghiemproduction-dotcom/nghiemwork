@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChatStore, useTaskStore, useSettingsStore, useGamificationStore, useTemplateStore } from '@/stores';
 import { streamAIChat, parseAIResponse, type AIAction } from '@/lib/aiService';
+import { toast } from 'sonner';
 import { Send, Bot, User, Trash2, Sparkles, Zap, Mic, MicOff } from 'lucide-react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { EisenhowerQuadrant } from '@/types';
@@ -250,6 +251,8 @@ export default function AIPage() {
         const { text, actions } = parseAIResponse(fullContent);
         const results = actions.map(action => ({ action, result: executeAction(action) }));
         setActionResults(results);
+        const okCount = results.filter(r => !r.result.startsWith('⚠️')).length;
+        if (results.length > 0 && okCount > 0) toast.success(okCount === results.length ? `Đã thực hiện ${okCount} hành động` : `Đã thực hiện ${okCount}/${results.length} hành động`);
         const actionSummary = results.map(r => r.result).join('\n');
         addMessage('assistant', text + (actionSummary ? '\n\n' + actionSummary : ''));
         setStreamingContent('');
@@ -257,6 +260,7 @@ export default function AIPage() {
         isStreamingRef.current = false;
       },
       (error) => {
+        toast.error(`Lỗi: ${error}`);
         addMessage('assistant', `Xin lỗi, có lỗi: ${error}`);
         setStreamingContent('');
         setLoading(false);

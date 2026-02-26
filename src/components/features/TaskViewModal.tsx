@@ -10,9 +10,7 @@ import {
 import type { Task, EisenhowerQuadrant, TaskFinance, MediaBlock } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
 
-const RECURRING_LABELS: Record<string, string> = {
-  none: 'Không', daily: 'Hàng ngày', weekdays: 'T2-T6', weekly: 'Hàng tuần', custom: 'Tùy chọn',
-};
+import { getRecurringLabel } from '@/lib/recurrence';
 
 function formatDuration(secs: number) {
   if (secs === 0) return '0s';
@@ -108,7 +106,7 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
               </span>
               {task.recurring.type !== 'none' && (
                 <span className="flex items-center gap-0.5 text-xs text-[var(--info)]">
-                  <RotateCcw size={10} /> {RECURRING_LABELS[task.recurring.type]}
+                  <RotateCcw size={10} /> {getRecurringLabel(task.recurring)}
                 </span>
               )}
               {task.xpReward && task.xpReward > 0 && (

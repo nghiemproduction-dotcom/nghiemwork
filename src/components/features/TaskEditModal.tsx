@@ -7,11 +7,27 @@ import {
 import type { Task, EisenhowerQuadrant, RecurringType, TaskFinance } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
 
-const RECURRING_OPTIONS: { value: RecurringType; label: string }[] = [
-  { value: 'none', label: 'Không' },
-  { value: 'daily', label: 'Hàng ngày' },
-  { value: 'weekdays', label: 'T2-T6' },
-  { value: 'weekly', label: 'Hàng tuần' },
+const RECURRING_OPTIONS: { type: RecurringType; interval?: number; label: string }[] = [
+  { type: 'none', label: 'Không' },
+  { type: 'hourly', interval: 1, label: 'Hàng giờ' },
+  { type: 'hourly', interval: 2, label: 'Cách 2 giờ' },
+  { type: 'hourly', interval: 3, label: 'Cách 3 giờ' },
+  { type: 'hourly', interval: 6, label: 'Cách 6 giờ' },
+  { type: 'hourly', interval: 12, label: 'Cách 12 giờ' },
+  { type: 'daily', interval: 1, label: 'Hàng ngày' },
+  { type: 'daily', interval: 2, label: 'Cách 2 ngày' },
+  { type: 'daily', interval: 3, label: 'Cách 3 ngày' },
+  { type: 'daily', interval: 7, label: 'Cách 7 ngày' },
+  { type: 'weekdays', label: 'T2–T6' },
+  { type: 'weekly', interval: 1, label: 'Hàng tuần' },
+  { type: 'weekly', interval: 2, label: 'Cách 2 tuần' },
+  { type: 'weekly', interval: 3, label: 'Cách 3 tuần' },
+  { type: 'weekly', interval: 4, label: 'Cách 4 tuần' },
+  { type: 'monthly', interval: 1, label: 'Hàng tháng' },
+  { type: 'monthly', interval: 2, label: 'Cách 2 tháng' },
+  { type: 'monthly', interval: 3, label: 'Cách 3 tháng' },
+  { type: 'monthly', interval: 6, label: 'Cách 6 tháng' },
+  { type: 'custom', label: 'Tùy chọn' },
 ];
 
 interface TaskEditModalProps {
@@ -32,6 +48,7 @@ export function TaskEditModal({ task, onClose }: TaskEditModalProps) {
   const [deadlineDate, setDeadlineDate] = useState(task.deadlineDate || '');
   const [deadlineTime, setDeadlineTime] = useState(task.deadlineTime || '');
   const [recurringType, setRecurringType] = useState<RecurringType>(task.recurring?.type || 'none');
+  const [recurringInterval, setRecurringInterval] = useState<number>(task.recurring?.interval ?? 1);
   const [notes, setNotes] = useState(task.notes || '');
   const [finance, setFinance] = useState<TaskFinance | undefined>(task.finance);
   const [showFinance, setShowFinance] = useState(!!task.finance);
@@ -61,7 +78,11 @@ export function TaskEditModal({ task, onClose }: TaskEditModalProps) {
       quadrant, deadline,
       deadlineDate: deadlineDate || undefined,
       deadlineTime: deadlineTime || undefined,
-      recurring: { type: recurringType },
+      recurring: {
+        type: recurringType,
+        interval: (recurringType === 'hourly' || recurringType === 'daily' || recurringType === 'weekly' || recurringType === 'monthly') ? recurringInterval : undefined,
+        customDays: recurringType === 'custom' ? task.recurring?.customDays : undefined,
+      },
       notes: notes || undefined,
       finance: showFinance && finance ? finance : undefined,
       xpReward: xpReward > 0 ? xpReward : undefined,
@@ -140,13 +161,16 @@ export function TaskEditModal({ task, onClose }: TaskEditModalProps) {
           {/* Recurring */}
           <div>
             <label className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mb-1.5"><RotateCcw size={12} /> Lặp lại</label>
-            <div className="flex gap-1.5">
-              {RECURRING_OPTIONS.map(r => (
-                <button key={r.value} onClick={() => setRecurringType(r.value)}
-                  className={`px-3 py-2 rounded-lg text-[11px] font-medium min-h-[36px] ${
-                    recurringType === r.value ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]' : 'bg-[var(--bg-surface)] text-[var(--text-secondary)]'
-                  }`}>{r.label}</button>
-              ))}
+            <div className="flex flex-wrap gap-1.5">
+              {RECURRING_OPTIONS.map((opt, idx) => {
+                const isSelected = recurringType === opt.type && (opt.interval == null || recurringInterval === opt.interval);
+                return (
+                  <button key={opt.type + (opt.interval ?? '') + idx} onClick={() => { setRecurringType(opt.type); if (opt.interval != null) setRecurringInterval(opt.interval); }}
+                    className={`px-2.5 py-2 rounded-lg text-[10px] font-medium min-h-[34px] ${
+                      isSelected ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]' : 'bg-[var(--bg-surface)] text-[var(--text-secondary)]'
+                    }`}>{opt.label}</button>
+                );
+              })}
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { useTaskStore, useAuthStore, useSettingsStore, useGamificationStore, use
 import { supabase } from '@/lib/supabase';
 import { requestNotificationPermission, canSendNotification } from '@/lib/notifications';
 import { exportData, importData } from '@/lib/dataUtils';
+import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
@@ -81,18 +82,19 @@ export default function SettingsPage() {
   const handleEnableNotifications = async () => {
     const granted = await requestNotificationPermission();
     if (granted) setNotificationSettings({ enabled: true });
-    else alert('Vui lòng bật quyền thông báo trong cài đặt trình duyệt.');
+    else toast.error('Vui lòng bật quyền thông báo trong cài đặt trình duyệt.');
   };
 
   const handleExport = () => {
     exportData(tasks, templates, gamState, { fontScale, tickSoundEnabled, voiceEnabled, timezone, notificationSettings });
+    toast.success('Đã xuất dữ liệu');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const result = await importData(file);
-    if (result.error) { alert(result.error); return; }
+    if (result.error) { toast.error(result.error); return; }
     if (window.confirm(`Nhập ${result.tasks?.length || 0} việc, ${result.templates?.length || 0} mẫu?`)) {
       if (result.tasks) {
         const key = user?.id && user.id !== 'guest' ? `nw_tasks_${user.id}` : 'nw_tasks';
@@ -106,6 +108,7 @@ export default function SettingsPage() {
         const key = user?.id && user.id !== 'guest' ? `nw_gamification_${user.id}` : 'nw_gamification';
         localStorage.setItem(key, JSON.stringify(result.gamification));
       }
+      toast.success('Đã nhập dữ liệu. Đang tải lại...');
       window.location.reload();
     }
     if (fileInputRef.current) fileInputRef.current.value = '';

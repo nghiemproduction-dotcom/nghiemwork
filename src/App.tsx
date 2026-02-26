@@ -1,17 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useSettingsStore, useAuthStore, useTaskStore, useChatStore, useGamificationStore, useTemplateStore } from '@/stores';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { checkDeadlineNotifications } from '@/lib/notifications';
+import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
+import { OfflineBanner } from '@/components/features/OfflineBanner';
 import { TaskTimer } from '@/components/features/TaskTimer';
 import TasksPage from '@/pages/TasksPage';
-import StatsPage from '@/pages/StatsPage';
 import AIPage from '@/pages/AIPage';
 import SettingsPage from '@/pages/SettingsPage';
-import AchievementsPage from '@/pages/AchievementsPage';
 import AuthPage from '@/pages/AuthPage';
 import TemplatesPage from '@/pages/TemplatesPage';
+
+const StatsPage = lazy(() => import('@/pages/StatsPage'));
+const AchievementsPage = lazy(() => import('@/pages/AchievementsPage'));
 
 export default function App() {
   const currentPage = useSettingsStore(s => s.currentPage);
@@ -137,8 +140,8 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'tasks': return <TasksPage />;
-      case 'stats': return <StatsPage />;
-      case 'achievements': return <AchievementsPage />;
+      case 'stats': return <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-[var(--text-muted)] text-sm">Đang tải...</div></div>}><StatsPage /></Suspense>;
+      case 'achievements': return <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-[var(--text-muted)] text-sm">Đang tải...</div></div>}><AchievementsPage /></Suspense>;
       case 'ai': return <AIPage />;
       case 'settings': return <SettingsPage />;
       case 'templates': return <TemplatesPage />;
@@ -148,6 +151,8 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
+      <Toaster theme="dark" position="top-center" richColors closeButton />
+      <OfflineBanner />
       <InstallPrompt />
       <TaskTimer />
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">{renderPage()}</main>

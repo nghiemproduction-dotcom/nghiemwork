@@ -12,9 +12,7 @@ import {
 import type { Task, TabType, EisenhowerQuadrant } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
 
-const RECURRING_LABELS: Record<string, string> = {
-  none: '', daily: 'Hàng ngày', weekdays: 'T2-T6', weekly: 'Hàng tuần', custom: 'Tùy chọn',
-};
+import { getRecurringLabel } from '@/lib/recurrence';
 
 function formatDuration(secs: number) {
   if (secs === 0) return '0s';
@@ -154,7 +152,7 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
                 </span>
               )}
               {task.recurring.type !== 'none' && (
-                <span className="flex items-center gap-0.5 text-[10px] text-[var(--info)]"><RotateCcw size={9} /> {RECURRING_LABELS[task.recurring.type]}</span>
+                <span className="flex items-center gap-0.5 text-[10px] text-[var(--info)]"><RotateCcw size={9} /> {getRecurringLabel(task.recurring)}</span>
               )}
               {deadlineDisplay && (
                 <span className={`flex items-center gap-0.5 text-[10px] font-medium ${deadlineInfo?.urgent ? 'text-[var(--error)]' : 'text-[var(--text-muted)]'}`}>

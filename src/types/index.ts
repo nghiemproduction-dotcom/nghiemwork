@@ -1,12 +1,14 @@
 // Eisenhower Matrix Quadrants
 export type EisenhowerQuadrant = 'do_first' | 'schedule' | 'delegate' | 'eliminate';
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'overdue' | 'paused';
-export type RecurringType = 'none' | 'daily' | 'weekdays' | 'weekly' | 'custom';
+export type RecurringType = 'none' | 'hourly' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom';
 export type TabType = 'pending' | 'done' | 'overdue';
 export type PageType = 'tasks' | 'stats' | 'ai' | 'settings' | 'achievements' | 'templates';
 
 export interface RecurringConfig {
   type: RecurringType;
+  /** Cho hàng giờ/ngày/tuần/tháng: lặp cách N đơn vị (mặc định 1). */
+  interval?: number;
   customDays?: number[];
   label?: string;
 }
