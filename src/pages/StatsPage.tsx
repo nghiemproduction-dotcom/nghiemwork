@@ -1,6 +1,6 @@
 // ==================== ENHANCED STATS PAGE ====================
 import { useMemo, useState } from 'react';
-import { useTaskStore, useGamificationStore, useSettingsStore } from '@/stores';
+import { useTaskStore, useGamificationStore, useSettingsStore, useHealthStore } from '@/stores';
 import { getNowInTimezone } from '@/lib/notifications';
 import { generateDailySummary } from '@/lib/dataUtils';
 import { 
@@ -32,7 +32,7 @@ const COLORS = {
 };
 
 type TimeRange = '7days' | '30days' | '90days' | 'all';
-type StatsTab = 'overview' | 'trends' | 'quadrants' | 'insights';
+type StatsTab = 'overview' | 'trends' | 'health' | 'quadrants' | 'insights';
 
 const formatDurationShort = (seconds: number): string => {
   if (seconds === 0) return '0';
@@ -153,6 +153,7 @@ export default function StatsPage() {
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: PieIcon },
     { id: 'trends', label: 'Xu hướng', icon: TrendingUp },
+    { id: 'health', label: 'Sức khỏe', icon: Activity },
     { id: 'quadrants', label: 'Ma trận', icon: Target },
     { id: 'insights', label: 'Phân tích', icon: Brain },
   ];
@@ -220,6 +221,7 @@ export default function StatsPage() {
         )}
         
         {activeTab === 'trends' && <TrendsPanel tasks={filteredTasks} timeRange={timeRange} />}
+        {activeTab === 'health' && <HealthPanel timeRange={timeRange} />}
         {activeTab === 'quadrants' && <QuadrantsPanel tasks={filteredTasks} />}
         {activeTab === 'insights' && <InsightsPanel tasks={filteredTasks} />}
       </div>
@@ -587,6 +589,179 @@ function InsightsPanel({ tasks }: { tasks: Task[] }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== HEALTH TAB COMPONENT ====================
+function HealthPanel({ timeRange }: { timeRange: TimeRange }) {
+  const healthEntries = useHealthStore(s => s.entries);
+  const timezone = useSettingsStore(s => s.timezone);
+  const now = getNowInTimezone(timezone);
+  
+  const healthData = useMemo(() => {
+    const days = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : timeRange === '90days' ? 90 : 365;
+    const data = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = subDays(now, i);
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      const entry = healthEntries.find(e => e.date === dateStr);
+      
+      data.push({
+        date: format(date, 'dd/MM'),
+        fullDate: dateStr,
+        weight: entry?.weight || null,
+        waist: entry?.waist || null,
+        water: entry?.water || null,
+        calories: entry?.calories || null,
+      });
+    }
+    
+    return data;
+  }, [healthEntries, timeRange, now]);
+
+  const latest = healthData[healthData.length - 1] || {};
+  const hasAnyData = healthEntries.length > 0;
+
+  if (!hasAnyData) {
+    return (
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-8 border border-[var(--border-subtle)] text-center">
+        <Activity size={48} className="mx-auto mb-4 text-[var(--success)]" />
+        <p className="text-sm text-[var(--text-muted)] mb-2">Chưa có dữ liệu sức khỏe</p>
+        <p className="text-xs text-[var(--text-muted)]">
+          Tạo VIỆC ĐƠN với chủ đề "SỨC KHỎE" và nhập số liệu khi hoàn thành
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Latest Values Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">⚖️</span>
+            <span className="text-xs text-[var(--text-muted)]">Cân nặng</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)] font-mono">
+            {latest.weight ? `${latest.weight} kg` : '--'}
+          </p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">📏</span>
+            <span className="text-xs text-[var(--text-muted)]">Vòng bụng</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)] font-mono">
+            {latest.waist ? `${latest.waist} cm` : '--'}
+          </p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">💧</span>
+            <span className="text-xs text-[var(--text-muted)]">Nước uống</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)] font-mono">
+            {latest.water ? `${latest.water} ml` : '--'}
+          </p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🔥</span>
+            <span className="text-xs text-[var(--text-muted)]">Calo tiêu hao</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)] font-mono">
+            {latest.calories ? `${latest.calories} kcal` : '--'}
+          </p>
+        </div>
+      </div>
+
+      {/* Weight Chart */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1 flex items-center gap-2">
+          <span>⚖️</span> Cân nặng (kg)
+        </h3>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={healthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} interval={Math.floor(healthData.length / 6)} />
+              <YAxis tick={{ fontSize: 9, fill: 'var(--text-muted)' }} domain={['dataMin - 1', 'dataMax + 1']} />
+              <Tooltip 
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '8px', fontSize: '11px' }}
+                formatter={(value: number) => value ? [`${value} kg`, 'Cân nặng'] : ['Không có dữ liệu', '']}
+              />
+              <Line type="monotone" dataKey="weight" stroke={COLORS.success} strokeWidth={2} dot={{ fill: COLORS.success, strokeWidth: 0, r: 3 }} connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Waist Chart */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1 flex items-center gap-2">
+          <span>📏</span> Vòng bụng (cm)
+        </h3>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={healthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} interval={Math.floor(healthData.length / 6)} />
+              <YAxis tick={{ fontSize: 9, fill: 'var(--text-muted)' }} domain={['dataMin - 1', 'dataMax + 1']} />
+              <Tooltip 
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '8px', fontSize: '11px' }}
+                formatter={(value: number) => value ? [`${value} cm`, 'Vòng bụng'] : ['Không có dữ liệu', '']}
+              />
+              <Line type="monotone" dataKey="waist" stroke={COLORS.warning} strokeWidth={2} dot={{ fill: COLORS.warning, strokeWidth: 0, r: 3 }} connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Water Chart */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1 flex items-center gap-2">
+          <span>💧</span> Lượng nước uống (ml)
+        </h3>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={healthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} interval={Math.floor(healthData.length / 6)} />
+              <YAxis tick={{ fontSize: 9, fill: 'var(--text-muted)' }} />
+              <Tooltip 
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '8px', fontSize: '11px' }}
+                formatter={(value: number) => value ? [`${value} ml`, 'Nước uống'] : ['Không có dữ liệu', '']}
+              />
+              <Bar dataKey="water" fill={COLORS.info} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Calories Chart */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1 flex items-center gap-2">
+          <span>🔥</span> Calo tiêu hao (kcal)
+        </h3>
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={healthData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} interval={Math.floor(healthData.length / 6)} />
+              <YAxis tick={{ fontSize: 9, fill: 'var(--text-muted)' }} />
+              <Tooltip 
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '8px', fontSize: '11px' }}
+                formatter={(value: number) => value ? [`${value} kcal`, 'Calo'] : ['Không có dữ liệu', '']}
+              />
+              <Bar dataKey="calories" fill={COLORS.danger} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

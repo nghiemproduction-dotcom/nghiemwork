@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useSettingsStore, useTemplateStore } from '@/stores';
 import { convertYoutubeUrl, isYoutubeUrl } from '@/lib/youtubeUtils';
-import {
+import { 
   Plus, Trash2, Edit3, X, Save, ListTree, Image, Youtube, Type, DollarSign, ArrowRight, ChevronUp, ChevronDown,
   Sparkles, Wand2, Zap, Target, Calendar, Clock, Tag, Award, Coins, FileText, Link, Trash, GripVertical,
-  CheckCircle2, AlertTriangle, Play, Pause, RotateCcw, FileEdit, Send, Bot, XCircle,
+  CheckCircle2, AlertTriangle, Play, Pause, RotateCcw, FileEdit, Send, Bot, XCircle, Download, Upload,
 } from 'lucide-react';
 import type { TaskTemplate, EisenhowerQuadrant, MediaBlock, TaskFinance } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
@@ -280,8 +280,10 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
   const [showFinance, setShowFinance] = useState(!!template?.finance);
   const [xpReward, setXpReward] = useState(template?.xpReward || 0);
   const [showXpInput, setShowXpInput] = useState(!!template?.xpReward);
+  const [healthMetrics, setHealthMetrics] = useState(template?.healthMetrics || {});
 
   const qConfig = QUADRANT_LABELS[quadrant];
+  const isHealthTopic = topic === 'SỨC KHỎE' || topic === 'Suc khoe' || topic?.toLowerCase().includes('sức khỏe');
 
   const handleAddMedia = () => {
     const val = mediaInput.trim();
@@ -311,6 +313,7 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
       finance: showFinance ? finance : undefined,
       xpReward: showXpInput && xpReward > 0 ? xpReward : undefined,
       templateType: 'single',
+      healthMetrics: isHealthTopic && Object.keys(healthMetrics).length > 0 ? healthMetrics : undefined,
     });
   };
 
@@ -410,6 +413,60 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
               className="flex-1 bg-[var(--bg-surface)] rounded-xl px-3 py-2 text-sm text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
               inputMode="numeric"
             />
+          </div>
+        )}
+
+        {/* Health Metrics - Only for SỨC KHỎE topic */}
+        {isHealthTopic && (
+          <div className="space-y-3 p-3 rounded-xl bg-[rgba(52,211,153,0.05)] border border-[rgba(52,211,153,0.2)] animate-slide-up">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">💪</span>
+              <span className="text-xs font-medium text-[var(--success)]">Số liệu Sức khỏe</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Cân nặng (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={healthMetrics.weight || ''}
+                  onChange={e => setHealthMetrics({ ...healthMetrics, weight: parseFloat(e.target.value) || undefined })}
+                  placeholder="65.5"
+                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Vòng bụng (cm)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={healthMetrics.waist || ''}
+                  onChange={e => setHealthMetrics({ ...healthMetrics, waist: parseFloat(e.target.value) || undefined })}
+                  placeholder="80"
+                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Nước uống (ml)</label>
+                <input
+                  type="number"
+                  value={healthMetrics.water || ''}
+                  onChange={e => setHealthMetrics({ ...healthMetrics, water: parseInt(e.target.value) || undefined })}
+                  placeholder="2500"
+                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Calo tiêu hao</label>
+                <input
+                  type="number"
+                  value={healthMetrics.calories || ''}
+                  onChange={e => setHealthMetrics({ ...healthMetrics, calories: parseInt(e.target.value) || undefined })}
+                  placeholder="500"
+                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -911,6 +968,135 @@ export default function TemplatesPage() {
   const [view, setView] = useState<'single' | 'group'>('single');
   const [viewingTemplate, setViewingTemplate] = useState<TaskTemplate | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importData, setImportData] = useState<TaskTemplate[]>([]);
+  const [importPreview, setImportPreview] = useState(false);
+
+  // Export templates to JSON file
+  const handleExport = () => {
+    if (templates.length === 0) {
+      alert('Chưa có mẫu nào để xuất!');
+      return;
+    }
+    
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      templates: templates,
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nghiemwork-templates-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import templates from JSON file
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        
+        // Validate data structure
+        if (!data.templates || !Array.isArray(data.templates)) {
+          alert('File không hợp lệ! Vui lòng chọn file JSON từ NghiemWork.');
+          return;
+        }
+        
+        // Filter valid templates
+        const validTemplates = data.templates.filter((t: Partial<TaskTemplate>) => 
+          t.title && t.quadrant && t.templateType
+        );
+        
+        if (validTemplates.length === 0) {
+          alert('Không tìm thấy mẫu hợp lệ trong file!');
+          return;
+        }
+        
+        setImportData(validTemplates);
+        setImportPreview(true);
+      } catch (error) {
+        alert('Lỗi đọc file! Vui lòng chọn file JSON hợp lệ.');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    event.target.value = '';
+  };
+
+  // Confirm import with duplicate handling and preserve group relationships
+  const confirmImport = (replaceExisting: boolean) => {
+    type TemplateWithOriginalIds = TaskTemplate & { originalSubtaskIds?: string[] };
+    const newTemplates: TemplateWithOriginalIds[] = [];
+    const idMapping: Record<string, string> = {}; // oldId -> newId
+    let added = 0;
+    let skipped = 0;
+    
+    // First pass: Create all templates and build ID mapping
+    importData.forEach((template) => {
+      // Check for duplicates by title
+      const existing = templates.find(t => t.title === template.title);
+      
+      if (existing && !replaceExisting) {
+        skipped++;
+        return;
+      }
+      
+      // Store old ID for mapping
+      const oldId = template.id;
+      
+      // Remove id and createdAt to create new template
+      const { id, createdAt, subtaskTemplateIds, ...templateData } = template;
+      
+      // Add template and get new ID
+      const newId = addTemplate({
+        ...templateData,
+        subtaskTemplateIds: undefined, // Will update in second pass
+      });
+      
+      // Store mapping
+      if (oldId) {
+        idMapping[oldId] = newId;
+      }
+      
+      // Store for second pass
+      newTemplates.push({
+        ...template,
+        id: newId,
+        originalSubtaskIds: subtaskTemplateIds || [],
+      });
+      
+      added++;
+    });
+    
+    // Second pass: Update group templates with new subtask IDs
+    newTemplates.forEach((template) => {
+      if (template.originalSubtaskIds && template.originalSubtaskIds.length > 0) {
+        // Map old subtask IDs to new IDs
+        const newSubtaskIds = template.originalSubtaskIds
+          .map((oldId: string) => idMapping[oldId])
+          .filter(Boolean); // Remove undefined (if subtask was skipped)
+        
+        if (newSubtaskIds.length > 0) {
+          updateTemplate(template.id, { subtaskTemplateIds: newSubtaskIds });
+        }
+      }
+    });
+    
+    alert(`Đã nhập ${added} mẫu mới! ${skipped > 0 ? `(${skipped} bị bỏ qua do trùng tên)` : ''}\n${newTemplates.filter(t => t.originalSubtaskIds?.length > 0).length} nhóm việc được khôi phục liên kết.`);
+    setImportPreview(false);
+    setImportData([]);
+  };
 
   // Get all unique topics from templates
   const allTopics = useMemo(() => {
@@ -991,10 +1177,20 @@ export default function TemplatesPage() {
     <div className="flex flex-col h-full px-4 pt-4 pb-24 overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-[var(--text-primary)]">Việc Mẫu</h1>
-        <button onClick={() => { setEditingTemplate(null); setShowEditor(!showEditor); }}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--accent-primary)] text-[var(--bg-base)] active:opacity-80 min-h-[40px]">
-          <Plus size={14} /> {view === 'single' ? 'Tạo việc đơn' : 'Tạo nhóm'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[var(--bg-elevated)] text-[var(--text-primary)] active:opacity-80 min-h-[40px]">
+            <Download size={14} /> Xuất
+          </button>
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[var(--bg-elevated)] text-[var(--text-primary)] active:opacity-80 min-h-[40px] cursor-pointer">
+            <Upload size={14} /> Nhập
+            <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+          </label>
+          <button onClick={() => { setEditingTemplate(null); setShowEditor(!showEditor); }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--accent-primary)] text-[var(--bg-base)] active:opacity-80 min-h-[40px]">
+            <Plus size={14} /> {view === 'single' ? 'Tạo việc đơn' : 'Tạo nhóm'}
+          </button>
+        </div>
       </div>
 
       {/* Topic tabs */}
@@ -1185,6 +1381,48 @@ export default function TemplatesPage() {
       )}
 
       {addingToTodo && <AddToTodoDialog template={addingToTodo} onClose={() => setAddingToTodo(null)} />}
+      
+      {/* Import Preview Dialog */}
+      {importPreview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-6">
+          <div className="w-full max-w-sm bg-[var(--bg-elevated)] rounded-2xl p-4 animate-slide-up space-y-3 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Xem trước nhập mẫu</h3>
+              <button onClick={() => { setImportPreview(false); setImportData([]); }} className="text-[var(--text-muted)]"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              Tìm thấy {importData.length} mẫu trong file
+            </p>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {importData.map((t, i) => {
+                const existing = templates.find(et => et.title === t.title);
+                return (
+                  <div key={i} className={`p-2 rounded-lg text-xs ${existing ? 'bg-[rgba(251,191,36,0.1)] border border-[var(--warning)]' : 'bg-[var(--bg-surface)]'}`}>
+                    <div className="flex items-center gap-1">
+                      <span>{t.templateType === 'group' ? '📦' : '📝'}</span>
+                      <span className="font-medium text-[var(--text-primary)]">{t.title}</span>
+                    </div>
+                    {existing && (
+                      <span className="text-[10px] text-[var(--warning)]">⚠️ Đã tồn tại</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => confirmImport(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-primary)]">
+                Chỉ thêm mới
+              </button>
+              <button onClick={() => confirmImport(true)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-primary)] text-[var(--bg-base)]">
+                Thay thế tất cả
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {viewingTemplate && (
         <TemplateViewModal
           template={viewingTemplate}

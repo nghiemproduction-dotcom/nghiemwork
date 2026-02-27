@@ -4,7 +4,7 @@ import type {
   EisenhowerQuadrant, RecurringConfig, UserProfile,
   GamificationState, NotificationSettings, Reward,
   TaskTemplate, MediaBlock, TaskFinance, Achievement,
-  PomodoroSettings,
+  PomodoroSettings, DailyHealthEntry,
 } from '@/types';
 import { calculateLevel, checkAchievement, getDefaultGamificationState } from '@/lib/gamification';
 import { getNowInTimezone } from '@/lib/notifications';
@@ -139,9 +139,32 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   updateTask: (id, updates) => {
-    const updated = get().tasks.map(t =>
-      t.id === id ? { ...t, ...updates } : t
-    );
+    const timezone = useSettingsStore.getState().timezone;
+    const now = getNowInTimezone(timezone);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 86400000;
+
+    const updated = get().tasks.map(t => {
+      if (t.id !== id) return t;
+      
+      let newUpdates = { ...updates };
+      
+      // Smart quadrant logic: If deadline is moved to another day
+      if (updates.deadline !== undefined && t.quadrant === 'do_first') {
+        const newDeadline = updates.deadline;
+        // If new deadline is not today, automatically change to 'schedule'
+        if (newDeadline && (newDeadline < todayStart || newDeadline >= todayEnd)) {
+          newUpdates = { ...newUpdates, quadrant: 'schedule' };
+        }
+        // If no deadline is set for a do_first task, change to schedule
+        if (!newDeadline) {
+          newUpdates = { ...newUpdates, quadrant: 'schedule' };
+        }
+      }
+      
+      return { ...t, ...newUpdates };
+    });
+    
     const key = getUserKey('nw_tasks', get()._userId);
     saveToStorage(key, updated);
     set({ tasks: updated });
@@ -249,6 +272,23 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const gamStore = useGamificationStore.getState();
       const xpFromTemplate = completedTask.xpReward || 0;
       gamStore.onTaskCompleted(completedTask.quadrant, finalDuration, timezone, xpFromTemplate);
+
+      // Record health data if template has healthMetrics
+      if (completedTask.templateId) {
+        const templateStore = useTemplateStore.getState();
+        const template = templateStore.templates.find(t => t.id === completedTask.templateId);
+        if (template?.healthMetrics && Object.keys(template.healthMetrics).length > 0) {
+          const healthStore = useHealthStore.getState();
+          healthStore.addEntry({
+            weight: template.healthMetrics.weight,
+            waist: template.healthMetrics.waist,
+            water: template.healthMetrics.water,
+            calories: template.healthMetrics.calories,
+            taskId: completedTask.id,
+            taskTitle: completedTask.title,
+          });
+        }
+      }
 
       if (completedTask.recurring?.type !== 'none') {
         const next = getNextRecurrence(completedTask.recurring, Date.now(), timezone);
@@ -769,6 +809,83 @@ export const useGamificationStore = create<GamificationStore>((set, get) => ({
     s.level = calculateLevel(s.xp);
     set({ state: s });
     get()._save();
+  },
+}));
+
+// ──────────── HEALTH STORE ────────────
+interface HealthStore {
+  entries: DailyHealthEntry[];
+  _userId: string | undefined;
+  initForUser: (userId?: string) => void;
+  addEntry: (entry: Omit<DailyHealthEntry, 'date'> & { date?: string }) => void;
+  updateEntry: (date: string, updates: Partial<DailyHealthEntry>) => void;
+  getEntryForDate: (date: string) => DailyHealthEntry | undefined;
+  getEntriesForRange: (startDate: string, endDate: string) => DailyHealthEntry[];
+  getLatestValues: () => { weight?: number; waist?: number; water?: number; calories?: number; date?: string };
+  deleteEntry: (date: string) => void;
+}
+
+export const useHealthStore = create<HealthStore>((set, get) => ({
+  entries: [],
+  _userId: undefined,
+
+  initForUser: (userId) => {
+    const key = getUserKey('nw_health', userId);
+    const entries = loadFromStorage<DailyHealthEntry[]>(key, []);
+    set({ entries, _userId: userId });
+  },
+
+  addEntry: (entry) => {
+    const timezone = useSettingsStore.getState().timezone;
+    const now = getNowInTimezone(timezone);
+    const dateStr = entry.date || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    const newEntry: DailyHealthEntry = { ...entry, date: dateStr };
+    
+    // Remove existing entry for same date if any
+    const filtered = get().entries.filter(e => e.date !== dateStr);
+    const updated = [...filtered, newEntry].sort((a, b) => a.date.localeCompare(b.date));
+    
+    const key = getUserKey('nw_health', get()._userId);
+    saveToStorage(key, updated);
+    set({ entries: updated });
+  },
+
+  updateEntry: (date, updates) => {
+    const updated = get().entries.map(e =>
+      e.date === date ? { ...e, ...updates } : e
+    );
+    const key = getUserKey('nw_health', get()._userId);
+    saveToStorage(key, updated);
+    set({ entries: updated });
+  },
+
+  getEntryForDate: (date) => {
+    return get().entries.find(e => e.date === date);
+  },
+
+  getEntriesForRange: (startDate, endDate) => {
+    return get().entries.filter(e => e.date >= startDate && e.date <= endDate);
+  },
+
+  getLatestValues: () => {
+    const sorted = [...get().entries].sort((a, b) => a.date.localeCompare(b.date));
+    const latest = sorted[sorted.length - 1];
+    if (!latest) return {};
+    return {
+      weight: latest.weight,
+      waist: latest.waist,
+      water: latest.water,
+      calories: latest.calories,
+      date: latest.date,
+    };
+  },
+
+  deleteEntry: (date) => {
+    const updated = get().entries.filter(e => e.date !== date);
+    const key = getUserKey('nw_health', get()._userId);
+    saveToStorage(key, updated);
+    set({ entries: updated });
   },
 }));
 

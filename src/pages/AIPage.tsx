@@ -284,10 +284,18 @@ export default function AIPage() {
   const doneCount = tasks.filter(t => t.status === 'done' && !t.parentId).length;
   const displayStreaming = streamingContent.replace(/:::ACTION\s*\n?[\s\S]*?\n?:::END/g, '').trim();
 
-  const singleTaskOptions = tasks
-    .filter(t => !t.parentId)
-    .slice(0, 30);
+  // Get SINGLE TEMPLATES (việc đơn trong MẪU) for @ mention
+  const singleTemplateOptions = templates.filter(t => {
+    // Single template: templateType === 'single' OR has no subtasks
+    if (t.templateType === 'single') return true;
+    if (t.templateType === 'group') return false;
+    // Fallback: check if it has no subtask references
+    if (t.subtaskTemplateIds && t.subtaskTemplateIds.length > 0) return false;
+    if (t.subtasks && t.subtasks.length > 0) return false;
+    return true;
+  }).slice(0, 30);
 
+  // Get GROUP TEMPLATES (nhóm việc trong MẪU) for @@ mention
   const groupTemplateOptions = templates.filter(t =>
     t.templateType === 'group' ||
     (t.subtaskTemplateIds && t.subtaskTemplateIds.length > 0) ||
@@ -300,13 +308,19 @@ export default function AIPage() {
       setMentionMode('none');
       return;
     }
-    if (mentionMode === 'task') {
-      const next = input.replace(/@$/, '') + `@${label}`;
-      setInput(next);
-    } else if (mentionMode === 'group') {
-      const next = input.replace(/@@$/, '') + `@@${label}`;
-      setInput(next);
+    // Find the last @ or @@ and replace everything after it with the selected mention
+    const lastAtIndex = input.lastIndexOf('@');
+    if (lastAtIndex === -1) {
+      setInput(label);
+      setMentionMode('none');
+      return;
     }
+    // Check if it's @@ (group) or @ (single)
+    const isGroup = mentionMode === 'group';
+    const beforeMention = input.slice(0, lastAtIndex);
+    const mentionPrefix = isGroup ? '@@' : '@';
+    const next = beforeMention + mentionPrefix + label;
+    setInput(next);
     setMentionMode('none');
   };
 
@@ -440,9 +454,13 @@ export default function AIPage() {
             onChange={e => {
               const v = e.target.value;
               setInput(v);
-              if (v.endsWith('@@')) setMentionMode('group');
-              else if (v.endsWith('@')) setMentionMode('task');
+              // Check if typing a mention - look for @@ or @ at the end of input (after last space)
+              const lastSpaceIndex = v.lastIndexOf(' ');
+              const afterLastSpace = lastSpaceIndex >= 0 ? v.slice(lastSpaceIndex + 1) : v;
+              if (afterLastSpace.endsWith('@@')) setMentionMode('group');
+              else if (afterLastSpace.endsWith('@')) setMentionMode('task');
               else if (!v.includes('@')) setMentionMode('none');
+              // Keep current mentionMode if @ is still in the word being typed
             }}
             onKeyDown={e => {
               if (e.key === 'Enter') {
@@ -466,7 +484,7 @@ export default function AIPage() {
             </p>
             <div className="space-y-1">
               {mentionMode === 'task'
-                ? singleTaskOptions.map(t => (
+                ? singleTemplateOptions.map(t => (
                     <button
                       key={t.id}
                       onClick={() => insertMention(t.title)}

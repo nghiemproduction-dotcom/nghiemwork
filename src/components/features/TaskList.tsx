@@ -253,11 +253,23 @@ export function TaskList() {
     })
     .sort((a, b) => {
       if (activeTab === 'pending') {
+        // Priority 1: In-progress tasks come first
         if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
         if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+        
+        // Priority 2: Do First tasks sorted by remaining time to deadline
+        if (a.quadrant === 'do_first' && b.quadrant === 'do_first') {
+          const now = Date.now();
+          const aTimeLeft = a.deadline ? a.deadline - now : Infinity;
+          const bTimeLeft = b.deadline ? b.deadline - now : Infinity;
+          return aTimeLeft - bTimeLeft; // Shorter time left comes first
+        }
+        
+        // Priority 3: Normal quadrant order for non-do_first tasks
         const qOrder: Record<EisenhowerQuadrant, number> = { do_first: 0, schedule: 1, delegate: 2, eliminate: 3 };
         const qDiff = qOrder[a.quadrant] - qOrder[b.quadrant];
         if (qDiff !== 0) return qDiff;
+        
         return a.order - b.order;
       }
       return (b.completedAt || b.createdAt) - (a.completedAt || a.createdAt);

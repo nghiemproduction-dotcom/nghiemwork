@@ -92,6 +92,8 @@ export interface TaskTemplate {
   templateType?: 'single' | 'group';
   // Topic categorization for grouping templates
   topic?: string;
+  // Health metrics for SỨC KHỎE topic
+  healthMetrics?: HealthMetrics;
 }
 
 export interface TimerState {
@@ -173,7 +175,24 @@ export interface GamificationState {
   rewards: Reward[];
 }
 
-// Notification
+// Health tracking metrics
+export interface HealthMetrics {
+  weight?: number; // in kg
+  waist?: number; // in cm
+  water?: number; // in ml
+  calories?: number; // calories burned
+}
+
+export interface DailyHealthEntry {
+  date: string; // YYYY-MM-DD format
+  weight?: number;
+  waist?: number;
+  water?: number;
+  calories?: number;
+  // Source task info
+  taskId?: string;
+  taskTitle?: string;
+}
 export interface NotificationSettings {
   enabled: boolean;
   beforeDeadline: number;
