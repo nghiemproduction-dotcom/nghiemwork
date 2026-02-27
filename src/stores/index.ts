@@ -906,6 +906,7 @@ interface SettingsStore {
   timezone: string;
   notificationSettings: NotificationSettings;
   pomodoroSettings: PomodoroSettings;
+  orientationLock: boolean;
   setFontScale: (scale: number) => void;
   setTickSound: (enabled: boolean) => void;
   setVoiceEnabled: (enabled: boolean) => void;
@@ -913,6 +914,7 @@ interface SettingsStore {
   setTimezone: (tz: string) => void;
   setNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   setPomodoroSettings: (settings: Partial<PomodoroSettings>) => void;
+  setOrientationLock: (enabled: boolean) => void;
 }
 
 const defaultNotificationSettings: NotificationSettings = {
@@ -929,6 +931,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   timezone: loadFromStorage<string>('nw_timezone', 'Asia/Ho_Chi_Minh'),
   notificationSettings: loadFromStorage<NotificationSettings>('nw_notifications', defaultNotificationSettings),
   pomodoroSettings: loadFromStorage<PomodoroSettings>('nw_pomodoro', defaultPomodoroSettings),
+  orientationLock: loadFromStorage<boolean>('nw_orientation_lock', false),
   currentPage: 'tasks',
 
   setFontScale: (scale) => {
@@ -940,6 +943,23 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   setVoiceEnabled: (enabled) => { saveToStorage('nw_voice', enabled); set({ voiceEnabled: enabled }); },
   setCurrentPage: (page) => set({ currentPage: page }),
   setTimezone: (tz) => { saveToStorage('nw_timezone', tz); set({ timezone: tz }); },
+  setOrientationLock: (enabled) => {
+    saveToStorage('nw_orientation_lock', enabled);
+    // Apply screen orientation lock using Screen Orientation API
+    try {
+      const scr = screen as Screen & { orientation?: { lock?: (o: string) => Promise<void>; unlock?: () => void } };
+      if (enabled && scr.orientation?.lock) {
+        scr.orientation.lock('landscape').catch(() => {
+          // Ignore errors (not supported, not in fullscreen, etc.)
+        });
+      } else if (!enabled && scr.orientation?.unlock) {
+        scr.orientation.unlock();
+      }
+    } catch {
+      // API not supported
+    }
+    set({ orientationLock: enabled });
+  },
   setNotificationSettings: (partial) => {
     set((prev) => {
       const updated = { ...prev.notificationSettings, ...partial };

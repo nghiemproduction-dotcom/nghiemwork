@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
+  Smartphone,
 } from 'lucide-react';
 
 const TIMEZONES = [
@@ -40,12 +41,14 @@ export default function SettingsPage() {
   const timezone = useSettingsStore(s => s.timezone);
   const notificationSettings = useSettingsStore(s => s.notificationSettings);
   const pomodoroSettings = useSettingsStore(s => s.pomodoroSettings);
+  const orientationLock = useSettingsStore(s => s.orientationLock);
   const setFontScale = useSettingsStore(s => s.setFontScale);
   const setTickSound = useSettingsStore(s => s.setTickSound);
   const setVoiceEnabled = useSettingsStore(s => s.setVoiceEnabled);
   const setTimezone = useSettingsStore(s => s.setTimezone);
   const setNotificationSettings = useSettingsStore(s => s.setNotificationSettings);
   const setPomodoroSettings = useSettingsStore(s => s.setPomodoroSettings);
+  const setOrientationLock = useSettingsStore(s => s.setOrientationLock);
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -255,6 +258,26 @@ export default function SettingsPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Orientation Lock */}
+      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Smartphone size={18} className="text-[var(--accent-primary)]" />
+            <div>
+              <span className="text-sm font-medium text-[var(--text-primary)] block">Khóa màn hình ngang</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Tự động xoay ngang khi dùng app</span>
+            </div>
+          </div>
+          <button onClick={() => setOrientationLock(!orientationLock)}
+            className={`w-12 h-7 rounded-full transition-colors relative ${orientationLock ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-surface)]'}`}>
+            <div className={`size-5 rounded-full bg-white absolute top-1 transition-transform ${orientationLock ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] mt-2">
+          ⚠️ Chỉ hoạt động trên mobile khi ở chế độ PWA/fullscreen
+        </p>
       </div>
 
       {/* Font size */}
