@@ -1,7 +1,7 @@
-const CACHE_NAME = 'nghiemwork-v2';
-const BUILD_VERSION = '2.0.0'; // Increment this on each deploy
-const STATIC_CACHE = 'nghiemwork-static-v2';
-const DATA_CACHE = 'nghiemwork-data-v2';
+const CACHE_NAME = 'nghiemwork-v3';
+const BUILD_VERSION = '3.0.0'; // Increment this on each deploy
+const STATIC_CACHE = 'nghiemwork-static-v3';
+const DATA_CACHE = 'nghiemwork-data-v3';
 
 // Assets to cache for offline functionality
 const STATIC_ASSETS = [
@@ -85,12 +85,52 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle navigation requests
+  // Handle navigation requests - critical for PWA standalone mode
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match('/index.html').then(r => r || new Response('Offline', { status: 503, statusText: 'Offline' }))
-      )
+      // Try cache first for navigation requests in PWA mode
+      caches.match('/').then((cached) => {
+        // If we have a cached version, use it
+        if (cached) {
+          // Try to fetch fresh version in background
+          fetch('/').then((response) => {
+            if (response.ok) {
+              const responseClone = response.clone();
+              caches.open(STATIC_CACHE).then((cache) => {
+                cache.put('/', responseClone);
+              });
+            }
+          }).catch(() => {
+            // Network failed, but we already returned cached version
+          });
+          return cached;
+        }
+        
+        // No cached version, try network
+        return fetch('/').then((response) => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put('/', responseClone);
+            });
+          }
+          return response;
+        }).catch(() => {
+          // Both cache and network failed - try index.html as fallback
+          return caches.match('/index.html').then((indexResponse) => {
+            if (indexResponse) {
+              return indexResponse;
+            }
+            // Ultimate fallback
+            return new Response(
+              '<html><body style="background:#0A0A0F;color:white;text-align:center;padding:50px;">' +
+              '<h1>NghiemWork</h1><p>App is loading...</p>' +
+              '<p>Please check your connection and try again.</p></body></html>',
+              { headers: { 'Content-Type': 'text/html' } }
+            );
+          });
+        });
+      })
     );
     return;
   }
