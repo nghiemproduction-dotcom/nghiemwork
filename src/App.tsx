@@ -56,13 +56,19 @@ export default function App() {
     }
   }, []);
 
-  // Initialize PWA and offline sync
+  // Initialize PWA and offline sync - simplified to prevent memory issues
   useEffect(() => {
     const initialize = async () => {
       try {
         await initializePWA();
-        await initializeOfflineSync();
-        await initializeStorageManagement();
+        // Only initialize offline sync if needed
+        if (navigator.onLine === false) {
+          await initializeOfflineSync();
+        }
+        // Initialize storage management less frequently
+        if (Math.random() < 0.1) { // 10% chance
+          await initializeStorageManagement();
+        }
       } catch (error) {
         console.error('Failed to initialize PWA/offline features:', error);
       }
@@ -135,23 +141,31 @@ export default function App() {
     }
   }, [user, initTasks, initChat, initGamification, initTemplates]);
 
-  // Mark overdue + notifications - check every 30 seconds instead of 10 for better performance
+  // Mark overdue + notifications - simplified to prevent memory issues
   useEffect(() => {
     if (!user) return;
-    const notifiedSet = new Set<string>();
+    
     let isMounted = true;
+    const notifiedSet = new Set<string>();
     
     const check = () => {
       if (!isMounted) return;
       
-      markOverdue();
-      if (notificationSettings.enabled) {
-        checkDeadlineNotifications(tasks, timezone, notificationSettings.beforeDeadline, notifiedSet);
+      try {
+        markOverdue();
+        if (notificationSettings.enabled) {
+          checkDeadlineNotifications(tasks, timezone, notificationSettings.beforeDeadline, notifiedSet);
+        }
+      } catch (error) {
+        console.warn('Error in notification check:', error);
       }
     };
     
+    // Initial check
     check();
-    const interval = setInterval(check, 30000); // 30 seconds instead of 10
+    
+    // Less frequent interval
+    const interval = setInterval(check, 60000); // 1 minute instead of 30 seconds
     
     return () => {
       isMounted = false;

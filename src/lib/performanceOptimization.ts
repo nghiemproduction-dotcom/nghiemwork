@@ -1,6 +1,6 @@
 // Performance optimization utilities
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 export class PerformanceOptimizer {
   private static instance: PerformanceOptimizer;
@@ -41,7 +41,7 @@ export class PerformanceOptimizer {
     };
   }
 
-  // Memory cleanup
+  // Memory cleanup - simplified to prevent memory issues
   cleanupMemory(): void {
     const now = Date.now();
     if (now - this.lastCleanup < this.CLEANUP_INTERVAL) {
@@ -50,31 +50,18 @@ export class PerformanceOptimizer {
 
     console.log('Performing memory cleanup...');
     
-    // Force garbage collection if available
-    if ('gc' in window) {
-      (window as { gc?: () => void }).gc?.();
-    }
-
-    // Clear unused event listeners
-    this.clearUnusedEventListeners();
-
-    // Optimize localStorage
+    // Only optimize localStorage, skip aggressive cleanup
     this.optimizeLocalStorage();
 
     this.lastCleanup = now;
   }
 
-  private clearUnusedEventListeners(): void {
-    // This is a placeholder for more sophisticated cleanup
-    // In practice, you'd track registered listeners and clean them up
-    console.log('Clearing unused event listeners...');
-  }
-
   private optimizeLocalStorage(): void {
     try {
       const keysToRemove: string[] = [];
+      const maxKeys = 50; // Limit to prevent blocking
       
-      for (let i = 0; i < localStorage.length; i++) {
+      for (let i = 0; i < localStorage.length && keysToRemove.length < maxKeys; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith('nw_')) {
           try {
@@ -88,6 +75,7 @@ export class PerformanceOptimizer {
         }
       }
       
+      // Remove keys one by one to prevent blocking
       keysToRemove.forEach(key => {
         try {
           localStorage.removeItem(key);
@@ -104,7 +92,7 @@ export class PerformanceOptimizer {
     }
   }
 
-  // Monitor performance
+  // Monitor performance - simplified
   monitorPerformance(): void {
     if ('performance' in window && 'memory' in performance) {
       const memory = (performance as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
@@ -112,55 +100,40 @@ export class PerformanceOptimizer {
         const usedMemory = memory.usedJSHeapSize / 1024 / 1024;
         const totalMemory = memory.totalJSHeapSize / 1024 / 1024;
         
-        console.log(`Memory usage: ${usedMemory.toFixed(2)}MB / ${totalMemory.toFixed(2)}MB`);
-        
-        // Trigger cleanup if memory usage is high
+        // Only log if memory usage is high
         if (usedMemory > totalMemory * 0.8) {
+          console.log(`High memory usage: ${usedMemory.toFixed(2)}MB / ${totalMemory.toFixed(2)}MB`);
           this.cleanupMemory();
         }
       }
     }
-  }
-
-  // Reduce re-renders with memoization
-  static memoize<T extends (...args: unknown[]) => unknown>(fn: T): T {
-    const cache = new Map();
-    return ((...args: Parameters<T>) => {
-      const key = JSON.stringify(args);
-      if (cache.has(key)) {
-        return cache.get(key);
-      }
-      const result = fn(...args);
-      cache.set(key, result);
-      return result;
-    }) as T;
   }
 }
 
 // Export singleton instance
 export const performanceOptimizer = PerformanceOptimizer.getInstance();
 
-// Performance monitoring hook
+// Performance monitoring hook - simplified
 export function usePerformanceMonitor() {
   useEffect(() => {
     const interval = setInterval(() => {
       performanceOptimizer.monitorPerformance();
-    }, 30000); // Check every 30 seconds
+    }, 60000); // Check every minute instead of 30 seconds
 
     return () => clearInterval(interval);
   }, []);
 }
 
-// Debounced storage operations
+// Debounced storage operations - simplified
 export const debouncedSave = PerformanceOptimizer.debounce((key: string, value: unknown) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.warn('Failed to save to localStorage:', error);
   }
-}, 1000);
+}, 2000); // Increased debounce time
 
-// Throttled timer updates
+// Throttled timer updates - simplified
 export const throttledTimerUpdate = PerformanceOptimizer.throttle((callback: () => void) => {
   callback();
-}, 1000);
+}, 2000); // Increased throttle time

@@ -32,20 +32,24 @@ function saveToStorage(key: string, value: unknown): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.warn('Failed to save to localStorage:', error);
-    // Try to free up space and retry
+    // Simplified cleanup - only remove a few old items
     try {
-      const keys = Object.keys(localStorage);
-      const oldKeys = keys.filter(k => k.startsWith('nw_') && !k.includes('settings'));
-      if (oldKeys.length > 0) {
-        // Remove oldest entry
-        const oldestKey = oldKeys[0];
-        localStorage.removeItem(oldestKey);
-        console.log('Removed old data to free space:', oldestKey);
-        // Retry saving
-        localStorage.setItem(key, JSON.stringify(value));
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('nw_') && k !== key);
+      if (keys.length > 5) {
+        // Remove only the 2 oldest items
+        for (let i = 0; i < 2 && i < keys.length; i++) {
+          localStorage.removeItem(keys[i]);
+        }
+        console.log('Removed some old data to free space');
+        // Retry saving once
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch {
+          console.warn('Still failed to save after cleanup');
+        }
       }
     } catch (retryError) {
-      console.error('Failed to save even after cleanup:', retryError);
+      console.error('Cleanup failed:', retryError);
     }
   }
 }
