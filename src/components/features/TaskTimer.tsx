@@ -44,8 +44,13 @@ export function TaskTimer() {
   // Chime every 30 seconds + voice announcement
   useEffect(() => {
     if (!timer.isRunning || timer.isPaused) return;
-    if (timer.elapsed > 0 && timer.elapsed % 30 === 0 && timer.elapsed !== lastAnnounced.current) {
-      lastAnnounced.current = timer.elapsed;
+    
+    // Check if we've crossed a 30-second boundary
+    const current30sBoundary = Math.floor(timer.elapsed / 30) * 30;
+    const last30sBoundary = Math.floor(lastAnnounced.current / 30) * 30;
+    
+    if (current30sBoundary > last30sBoundary && timer.elapsed > 0) {
+      lastAnnounced.current = current30sBoundary;
       // Play chime sound
       playChime();
       // Voice announcement
@@ -53,7 +58,8 @@ export function TaskTimer() {
         setTimeout(() => announceTime(timer.elapsed), 600);
       }
     }
-    // Encouragement every 2-3 minutes (random)
+    
+    // AI encouragement every 2-3 minutes (random)
     if (timer.elapsed > 0 && timer.elapsed - lastEncourage.current >= 120 + Math.floor(Math.random() * 60)) {
       lastEncourage.current = timer.elapsed;
       if (voiceEnabled && currentTask) {
@@ -80,7 +86,7 @@ export function TaskTimer() {
         speak(isLongBreak ? 'Nghỉ dài nhé! Bạn đã làm rất tốt!' : 'Nghỉ ngắn thôi, sắp tiếp tục!');
       }
     }
-  }, [timer.elapsed, timer.pomodoroPhase, timer.isRunning, timer.isPaused, pomodoroSettings, voiceEnabled, speak]);
+  }, [timer.elapsed, timer.pomodoroSession, timer.pomodoroPhase, timer.isRunning, timer.isPaused, pomodoroSettings, voiceEnabled, speak]);
 
   const handleComplete = useCallback(() => {
     if (!currentTask) return;

@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { useSettingsStore, useAuthStore, useTaskStore, useChatStore, useGamificationStore, useTemplateStore } from '@/stores';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { checkDeadlineNotifications } from '@/lib/notifications';
+import { isOfflineEnabled, enableOfflineMode } from '@/stores';
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
@@ -55,22 +56,40 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let mounted = true;
+    
+    // Check if user was previously online and has data
+    const checkOfflineMode = () => {
+      if (isOfflineEnabled()) {
+        // Enable offline mode if no network
+        enableOfflineMode();
+        // Try to load guest user if no session
+        if (!user) {
+          setUser({ id: 'guest', email: 'guest@nghiemwork.local', username: 'Khách (Offline)' });
+          setLoading(false);
+        }
+        return;
+      }
+    };
+    
+    checkOfflineMode();
+    
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         if (mounted && session?.user) {
           const u = session.user;
           setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
-        } else if (mounted) {
+        } else if (mounted && !isOfflineEnabled()) {
+          // Only set to null if not in offline mode
           setLoading(false);
         }
       })
-      .catch(() => { if (mounted) setLoading(false); });
+      .catch(() => { if (mounted && !isOfflineEnabled()) setLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === 'SIGNED_IN' && session?.user) {
         const u = session.user;
         setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT' && !isOfflineEnabled()) {
         setUser(null);
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -79,7 +98,7 @@ export default function App() {
       }
     });
     return () => { mounted = false; subscription.unsubscribe(); };
-  }, []);
+  }, [setLoading, setUser, user]);
 
   // Init stores per user
   useEffect(() => {
