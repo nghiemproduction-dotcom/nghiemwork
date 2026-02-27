@@ -184,13 +184,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)] landscape:max-w-none landscape:w-full landscape:px-4">
       <Toaster theme="dark" position="top-center" richColors closeButton />
       <OfflineBanner />
       <InstallPrompt />
       <UpdatePrompt />
       <TaskTimer />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">{renderPage()}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))] landscape:w-full landscape:max-w-4xl landscape:mx-auto">{renderPage()}</main>
       <BottomNav />
     </div>
   );

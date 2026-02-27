@@ -248,9 +248,15 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
                 {template.media.map(block => (
                   <div key={block.id} className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                     {block.type === 'youtube' && (
-                      <div className="aspect-video">
-                        <iframe src={block.content} className="w-full h-full" allowFullScreen
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+                      <div className="aspect-video relative">
+                        <iframe 
+                          src={block.content} 
+                          className="w-full h-full absolute inset-0" 
+                          allowFullScreen
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                          title="YouTube video"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                        />
                       </div>
                     )}
                     {block.type === 'image' && (

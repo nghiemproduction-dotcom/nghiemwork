@@ -132,11 +132,9 @@ interface TaskStore {
   getQuadrantCounts: () => { do_first: number; schedule: number; delegate: number; eliminate: number; };
 }
 
-// Background timer persistence
-let backgroundTimerInterval: NodeJS.Timeout | null = null;
-let lastSavedTime = 0;
+// ──────────── TIMER PERSISTENCE ────────────
 
-// Save timer state to localStorage for persistence
+// Save timer state to localStorage for persistence across reloads / app kills
 function saveTimerState(timer: TimerState) {
   try {
     const key = getUserKey('nw_timer_state', useTaskStore.getState()._userId);
@@ -144,41 +142,41 @@ function saveTimerState(timer: TimerState) {
       ...timer,
       savedAt: Date.now()
     }));
-    lastSavedTime = Date.now();
-  } catch (e) {
+  } catch {
     // Ignore save errors
   }
 }
 
-// Load timer state from localStorage
-function loadTimerState(): TimerState | null {
+// Load timer state from localStorage.
+// Accepts an explicit userId so it works inside initForUser (before _userId is set).
+function loadTimerState(userIdOverride?: string): TimerState | null {
   try {
-    const userId = useTaskStore.getState()._userId;
-    if (!userId) return null;
+    const userId = userIdOverride !== undefined
+      ? userIdOverride
+      : useTaskStore.getState()._userId;
     const key = getUserKey('nw_timer_state', userId);
     const saved = localStorage.getItem(key);
     if (!saved) return null;
-    
+
     const data = JSON.parse(saved);
-    const timeDiff = (Date.now() - data.savedAt) / 1000;
-    
-    // If timer was running, calculate elapsed time while app was closed
+
+    // If timer was running, recalculate elapsed from wall clock
+    // so the timer "catches up" after the app was killed / closed.
     if (data.isRunning && !data.isPaused && data.startTime) {
-      const totalElapsed = Math.floor((data.savedAt - data.startTime) / 1000) + Math.floor(timeDiff);
+      const totalElapsed = Math.floor((Date.now() - data.startTime) / 1000);
       const elapsed = totalElapsed - (data.totalPausedDuration || 0);
       return {
         ...data,
         elapsed: Math.max(0, elapsed),
-        startTime: data.startTime,
         savedAt: undefined
       };
     }
-    
+
     return {
       ...data,
       savedAt: undefined
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -188,48 +186,45 @@ function clearTimerState() {
   try {
     const key = getUserKey('nw_timer_state', useTaskStore.getState()._userId);
     localStorage.removeItem(key);
-  } catch (e) {
+  } catch {
     // Ignore clear errors
   }
 }
 
-// Background timer tick when app is hidden
-function startBackgroundTimer() {
-  if (backgroundTimerInterval) clearInterval(backgroundTimerInterval);
-  
-  backgroundTimerInterval = setInterval(() => {
-    const timer = useTaskStore.getState().timer;
-    if (timer.isRunning && !timer.isPaused) {
-      // Save current state every 5 seconds in background
-      if (Date.now() - lastSavedTime >= 5000) {
-        saveTimerState(timer);
-      }
-    }
-  }, 1000);
-}
-
-function stopBackgroundTimer() {
-  if (backgroundTimerInterval) {
-    clearInterval(backgroundTimerInterval);
-    backgroundTimerInterval = null;
-  }
-}
-
-// Handle visibility change
+// ── Visibility change: save state going to bg, recalculate coming back ──
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      startBackgroundTimer();
-    } else {
-      stopBackgroundTimer();
-      // When app becomes visible again, check if we need to restore timer
+    // Guard: store may not be initialized yet at module load time.
+    // useTaskStore is defined below; this listener fires later so it's safe.
+    try {
       const timer = useTaskStore.getState().timer;
-      if (timer.isRunning) {
-        const savedTimer = loadTimerState();
-        if (savedTimer && savedTimer.elapsed > timer.elapsed) {
+      if (document.hidden) {
+        if ((timer.isRunning || timer.isPaused) && timer.startTime) {
+          saveTimerState(timer);
+        }
+      } else {
+        // Recalculate elapsed from wall clock immediately when the tab
+        // becomes visible, so the UI shows the correct value right away.
+        if (timer.isRunning && !timer.isPaused && timer.startTime) {
           useTaskStore.getState().tickTimer();
         }
       }
+    } catch {
+      // Store not ready yet — ignore
+    }
+  });
+}
+
+// ── Page unload: persist timer so it survives app kill / refresh ──
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    try {
+      const timer = useTaskStore.getState().timer;
+      if ((timer.isRunning || timer.isPaused) && timer.startTime) {
+        saveTimerState(timer);
+      }
+    } catch {
+      // Store not ready yet — ignore
     }
   });
 }
@@ -252,8 +247,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const key = getUserKey('nw_tasks', userId);
     const tasks = loadFromStorage<Task[]>(key, []);
     
-    // Try to restore timer state
-    const savedTimer = loadTimerState();
+    // Try to restore timer state (pass userId explicitly since _userId
+    // isn't set yet at this point in the store lifecycle).
+    const savedTimer = loadTimerState(userId);
     const timer = savedTimer || { ...defaultTimer };
     
     set({ tasks, _userId: userId, timer });
