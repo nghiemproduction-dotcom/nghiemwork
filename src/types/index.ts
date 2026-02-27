@@ -64,10 +64,14 @@ export interface Task {
   templateId?: string;
   // Group source (when task was created from a group template)
   groupTemplateId?: string;
+  // Topic categorization
+  topic?: string;
   // Dependencies
   dependsOn?: string[]; // task IDs this task depends on
   // EXP from template
   xpReward?: number;
+  // Trash tracking
+  deletedAt?: number;
 }
 
 export interface TaskTemplate {
@@ -86,6 +90,8 @@ export interface TaskTemplate {
   createdAt: number;
   updatedAt?: number;
   templateType?: 'single' | 'group';
+  // Topic categorization for grouping templates
+  topic?: string;
 }
 
 export interface TimerState {

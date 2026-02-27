@@ -4,10 +4,11 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { formatTimeRemaining, formatDeadlineDisplay } from '@/lib/notifications';
 import { TaskViewModal } from '@/components/features/TaskViewModal';
 import { TaskEditModal } from '@/components/features/TaskEditModal';
+import { SwipeableTaskItem } from '@/components/features/SwipeableTaskItem';
 import {
   Play, CheckCircle2, GripVertical, RotateCcw, Trash2, Undo2,
   Clock, Calendar, AlertTriangle, ChevronDown, ChevronRight,
-  DollarSign, ListTree, Link2, Lock, Search, X,
+  DollarSign, ListTree, Link2, Lock, Search, X, Tag,
 } from 'lucide-react';
 import type { Task, TabType, EisenhowerQuadrant } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
@@ -77,33 +78,17 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
   const canStart = canStartTask(task.id);
   const hasDeps = (task.dependsOn?.length || 0) > 0;
   const depsBlocked = hasDeps && !canStart;
-  // Timer only on leaf tasks (no children) or parent tasks without children
   const isTimerRunnable = !hasChildTasks && canStart;
   const effectiveGroupId = task.groupTemplateId || ((task.templateId && templates.find(t => t.id === task.templateId)?.templateType === 'group') ? task.templateId : undefined);
   const groupTemplate = effectiveGroupId ? templates.find(t => t.id === effectiveGroupId) : null;
 
-  const { swipeState, handlers } = useSwipeGesture({
-    threshold: 80,
-    onSwipeLeft: tab === 'pending' ? () => completeTask(task.id) : undefined,
-  });
-
   const deadlineInfo = task.deadline ? formatTimeRemaining(task.deadline, timezone) : null;
   const deadlineDisplay = task.deadline ? formatDeadlineDisplay(task.deadline, timezone) : null;
 
-  return (
-    <div className="relative overflow-hidden rounded-xl mb-2"
-      style={{
-        transform: swipeState.isSwiping ? `translateX(${swipeState.offsetX}px)` : 'translateX(0)',
-        transition: swipeState.isSwiping ? 'none' : 'transform 0.3s ease-out',
-      }}>
-      {tab === 'pending' && (
-        <div className="absolute inset-0 bg-[rgba(52,211,153,0.2)] flex items-center justify-end pr-6 rounded-xl">
-          <CheckCircle2 size={24} className="text-[var(--success)]" />
-        </div>
-      )}
-
-      <div {...handlers}
-        className={`relative flex flex-col rounded-xl transition-colors ${
+  // Inner content component
+  const taskContent = (
+    <>
+      <div className={`relative flex flex-col rounded-xl transition-colors ${
           isTimerActive ? 'bg-[var(--accent-dim)] border border-[var(--border-accent)]'
             : depsBlocked ? 'bg-[var(--bg-elevated)] border border-[var(--border-subtle)] opacity-60'
             : 'bg-[var(--bg-elevated)] border border-[var(--border-subtle)]'
@@ -188,6 +173,11 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
               {hasDeps && (
                 <span className="flex items-center gap-0.5 text-[10px] text-[var(--warning)]"><Link2 size={9} /> Phụ thuộc</span>
               )}
+              {task.topic && (
+                <span className="flex items-center gap-0.5 text-[10px] text-[var(--accent-primary)] bg-[rgba(0,229,204,0.1)] px-1.5 py-0.5 rounded-full">
+                  <Tag size={8} /> {task.topic}
+                </span>
+              )}
             </div>
           </div>
 
@@ -209,6 +199,22 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
 
         {expanded && hasChildTasks && <SubtaskList parentId={task.id} />}
       </div>
+    </>
+  );
+
+  // Wrap with SwipeableTaskItem for swipe actions on pending tasks
+  if (tab === 'pending') {
+    return (
+      <SwipeableTaskItem task={task} onView={() => onView(task)} onStartTimer={() => onStartTimer(task.id)}>
+        {taskContent}
+      </SwipeableTaskItem>
+    );
+  }
+
+  // For done/overdue tabs, use normal div wrapper
+  return (
+    <div className="relative overflow-hidden rounded-xl mb-2">
+      {taskContent}
     </div>
   );
 }
@@ -299,6 +305,8 @@ export function TaskList() {
   const pendingCount = tasks.filter(t => (t.status === 'pending' || t.status === 'in_progress') && !t.parentId).length;
   const doneCount = tasks.filter(t => t.status === 'done' && !t.parentId).length;
   const overdueCount = tasks.filter(t => t.status === 'overdue' && !t.parentId).length;
+  const getQuadrantCounts = useTaskStore(s => s.getQuadrantCounts);
+  const quadrantCounts = getQuadrantCounts();
 
   const handleStartTimer = useCallback((taskId: string) => {
     if (timer.isRunning || timer.isPaused) return;
@@ -331,12 +339,12 @@ export function TaskList() {
     { key: 'overdue', label: 'Quá hạn', count: overdueCount },
   ];
 
-  const quadrantFilters: { key: EisenhowerQuadrant | 'all'; label: string }[] = [
-    { key: 'all', label: 'Tất cả' },
-    { key: 'do_first', label: '🔴 Làm ngay' },
-    { key: 'schedule', label: '🔵 Lên lịch' },
-    { key: 'delegate', label: '🟡 Ủy thác' },
-    { key: 'eliminate', label: '⚪ Loại bỏ' },
+  const quadrantFilters: { key: EisenhowerQuadrant | 'all'; label: string; count: number }[] = [
+    { key: 'all', label: 'Tất cả', count: pendingCount },
+    { key: 'do_first', label: '🔴 Làm ngay', count: quadrantCounts.do_first },
+    { key: 'schedule', label: '🔵 Lên lịch', count: quadrantCounts.schedule },
+    { key: 'delegate', label: '🟡 Ủy thác', count: quadrantCounts.delegate },
+    { key: 'eliminate', label: '⚪ Loại bỏ', count: quadrantCounts.eliminate },
   ];
 
   return (
@@ -380,13 +388,22 @@ export function TaskList() {
 
       {activeTab === 'pending' && pendingCount > 0 && (
         <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
-          {quadrantFilters.map(({ key, label }) => (
+          {quadrantFilters.map(({ key, label, count }) => (
             <button key={key} onClick={() => setQuadrantFilter(key)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium min-h-[32px] ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium min-h-[32px] flex items-center gap-1.5 ${
                 quadrantFilter === key
                   ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]'
                   : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border border-transparent'
-              }`}>{label}</button>
+              }`}>
+              {label}
+              {count > 0 && (
+                <span className={`inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[9px] font-bold ${
+                  quadrantFilter === key ? 'bg-[rgba(0,229,204,0.3)]' : 'bg-[var(--bg-base)]'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
           ))}
         </div>
       )}

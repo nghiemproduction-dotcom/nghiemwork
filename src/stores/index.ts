@@ -51,6 +51,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
 // ──────────── TASK STORE ────────────
 interface TaskStore {
   tasks: Task[];
+  deletedTasks: Task[]; // Trash/Recycle bin
   activeTab: TabType;
   timer: TimerState;
   searchQuery: string;
@@ -58,9 +59,12 @@ interface TaskStore {
   initForUser: (userId?: string) => void;
   setActiveTab: (tab: TabType) => void;
   setSearchQuery: (q: string) => void;
-  addTask: (title: string, quadrant?: EisenhowerQuadrant, deadline?: number, recurring?: RecurringConfig, deadlineDate?: string, deadlineTime?: string, parentId?: string, media?: MediaBlock[], finance?: TaskFinance, templateId?: string, xpReward?: number, groupTemplateId?: string) => string;
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'quadrant' | 'deadline' | 'recurring' | 'notes' | 'deadlineDate' | 'deadlineTime' | 'finance' | 'parentId' | 'dependsOn' | 'xpReward' | 'groupTemplateId'>>) => void;
-  removeTask: (id: string) => void;
+  addTask: (title: string, quadrant?: EisenhowerQuadrant, deadline?: number, recurring?: RecurringConfig, deadlineDate?: string, deadlineTime?: string, parentId?: string, media?: MediaBlock[], finance?: TaskFinance, templateId?: string, xpReward?: number, groupTemplateId?: string, topic?: string) => string;
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'quadrant' | 'deadline' | 'recurring' | 'notes' | 'deadlineDate' | 'deadlineTime' | 'finance' | 'parentId' | 'dependsOn' | 'xpReward' | 'groupTemplateId' | 'templateId' | 'topic'>>) => void;
+  removeTask: (id: string) => void; // Move to trash
+  deletePermanently: (id: string) => void; // Delete from trash
+  restoreFromTrash: (id: string) => void; // Restore from trash
+  clearTrash: () => void; // Empty trash
   completeTask: (id: string, duration?: number) => void;
   restoreTask: (id: string) => void;
   reorderTasks: (fromIndex: number, toIndex: number) => void;
@@ -78,6 +82,8 @@ interface TaskStore {
   unassignSubtask: (taskId: string) => void;
   canStartTask: (taskId: string) => boolean;
   hasChildren: (taskId: string) => boolean;
+  // Counters for 4 quadrants
+  getQuadrantCounts: () => { do_first: number; schedule: number; delegate: number; eliminate: number; };
 }
 
 const defaultTimer: TimerState = {
@@ -88,6 +94,7 @@ const defaultTimer: TimerState = {
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: loadFromStorage<Task[]>('nw_tasks', []),
+  deletedTasks: loadFromStorage<Task[]>('nw_deleted_tasks', []), // Trash
   activeTab: 'pending',
   timer: { ...defaultTimer },
   searchQuery: '',
@@ -102,7 +109,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSearchQuery: (q) => set({ searchQuery: q }),
 
-  addTask: (title, quadrant = 'do_first', deadline, recurring = { type: 'none' }, deadlineDate, deadlineTime, parentId, _media, finance, templateId, xpReward, groupTemplateId) => {
+  addTask: (title, quadrant = 'do_first', deadline, recurring = { type: 'none' }, deadlineDate, deadlineTime, parentId, _media, finance, templateId, xpReward, groupTemplateId, topic) => {
     const tasks = get().tasks;
     const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
     const id = generateId();
@@ -112,7 +119,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       order: pendingTasks.length,
       recurring: recurring || { type: 'none' },
       recurringLabel: recurring && recurring.type !== 'none' ? title : undefined,
-      parentId, finance, templateId, xpReward, groupTemplateId,
+      parentId, finance, templateId, xpReward, groupTemplateId, topic,
     };
 
     let updated = [...tasks, newTask];
@@ -141,8 +148,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   removeTask: (id) => {
+    // Move task to trash instead of permanently deleting
     const tasks = get().tasks;
     const taskToRemove = tasks.find(t => t.id === id);
+    if (!taskToRemove) return;
+    
     const idsToRemove = new Set<string>();
     const collectIds = (taskId: string) => {
       idsToRemove.add(taskId);
@@ -153,7 +163,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     };
     collectIds(id);
 
+    const tasksToTrash = tasks.filter(t => idsToRemove.has(t.id));
     let updated = tasks.filter(t => !idsToRemove.has(t.id));
+    
     if (taskToRemove?.parentId) {
       updated = updated.map(t => {
         if (t.id === taskToRemove.parentId) {
@@ -170,9 +182,43 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       return t;
     });
 
+    // Add to trash with deletedAt timestamp
+    const trashedTasks = tasksToTrash.map(t => ({ ...t, deletedAt: Date.now() }));
+    const newDeletedTasks = [...get().deletedTasks, ...trashedTasks];
+
     const key = getUserKey('nw_tasks', get()._userId);
+    const trashKey = getUserKey('nw_deleted_tasks', get()._userId);
     saveToStorage(key, updated);
-    set({ tasks: updated });
+    saveToStorage(trashKey, newDeletedTasks);
+    set({ tasks: updated, deletedTasks: newDeletedTasks });
+  },
+
+  deletePermanently: (id) => {
+    const updated = get().deletedTasks.filter(t => t.id !== id);
+    const trashKey = getUserKey('nw_deleted_tasks', get()._userId);
+    saveToStorage(trashKey, updated);
+    set({ deletedTasks: updated });
+  },
+
+  restoreFromTrash: (id) => {
+    const taskToRestore = get().deletedTasks.find(t => t.id === id);
+    if (!taskToRestore) return;
+    
+    const { deletedAt, ...restoredTask } = taskToRestore;
+    const updatedTrash = get().deletedTasks.filter(t => t.id !== id);
+    const updatedTasks = [...get().tasks, restoredTask];
+    
+    const key = getUserKey('nw_tasks', get()._userId);
+    const trashKey = getUserKey('nw_deleted_tasks', get()._userId);
+    saveToStorage(key, updatedTasks);
+    saveToStorage(trashKey, updatedTrash);
+    set({ tasks: updatedTasks, deletedTasks: updatedTrash });
+  },
+
+  clearTrash: () => {
+    const trashKey = getUserKey('nw_deleted_tasks', get()._userId);
+    localStorage.removeItem(trashKey);
+    set({ deletedTasks: [] });
   },
 
   completeTask: (id, duration) => {
@@ -387,6 +433,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   hasChildren: (taskId) => {
     return get().tasks.some(t => t.parentId === taskId);
+  },
+
+  getQuadrantCounts: () => {
+    const tasks = get().tasks.filter(t => t.status !== 'done' && !t.deletedAt);
+    return {
+      do_first: tasks.filter(t => t.quadrant === 'do_first').length,
+      schedule: tasks.filter(t => t.quadrant === 'schedule').length,
+      delegate: tasks.filter(t => t.quadrant === 'delegate').length,
+      eliminate: tasks.filter(t => t.quadrant === 'eliminate').length,
+    };
   },
 }));
 

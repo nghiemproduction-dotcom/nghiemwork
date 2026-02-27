@@ -107,6 +107,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user?.id, tasks.length, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
 
+  // Handle navigation events from template AI editor
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      const targetPage = customEvent.detail;
+      const validPages = ['tasks', 'stats', 'achievements', 'ai', 'settings', 'templates'] as const;
+      if (targetPage && validPages.includes(targetPage as typeof validPages[number])) {
+        useSettingsStore.getState().setCurrentPage(targetPage as typeof validPages[number]);
+      }
+    };
+    window.addEventListener('navigate-to-page', handleNavigate);
+    return () => window.removeEventListener('navigate-to-page', handleNavigate);
+  }, []);
+
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-base)] p-6">

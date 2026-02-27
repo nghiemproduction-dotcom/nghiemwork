@@ -211,7 +211,7 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
                         <button 
                           onClick={() => {
                             const notes = (document.getElementById('template-notes-input') as HTMLInputElement)?.value;
-                            addTemplate({
+                            const templateId = addTemplate({
                               title: task.title,
                               quadrant: task.quadrant,
                               recurring: task.recurring,
@@ -219,6 +219,8 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
                               templateType: 'single',
                               xpReward: task.xpReward,
                             });
+                            // Update task to link with the new template
+                            updateTask(task.id, { templateId });
                             setShowAddToTemplate(false);
                           }}
                           className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--bg-base)] bg-[var(--warning)] active:opacity-80 flex items-center justify-center gap-1"
