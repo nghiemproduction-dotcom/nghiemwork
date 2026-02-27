@@ -18,6 +18,7 @@
     <meta name="twitter:title" content="NghiemWork - Quản Lý Công Việc Hàng Ngày" />
     <meta name="twitter:description" content="Ứng dụng quản lý công việc hàng ngày chuyên nghiệp với timer giọng nói, kéo thả sắp xếp, playlist nhạc và trợ lý AI thông minh." />
     <meta name="twitter:image" content="/og-image.jpg" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/og-image.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,20 +28,15 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Unregister service workers and clear caches to fix PWA white screen
+      // Register service worker for PWA
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
-          }
-        });
-        if ('caches' in window) {
-          caches.keys().then(function(cacheNames) {
-            cacheNames.forEach(function(cacheName) {
-              caches.delete(cacheName);
-            });
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(registration) {
+            console.log('SW registered:', registration);
+          }).catch(function(err) {
+            console.log('SW registration failed:', err);
           });
-        }
+        });
       }
     </script>
   </body>
