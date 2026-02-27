@@ -32,82 +32,21 @@ function saveToStorage(key: string, value: unknown): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
     console.warn('Failed to save to localStorage:', error);
-    // Simplified cleanup - only remove a few old items
-    try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('nw_') && k !== key);
-      if (keys.length > 5) {
-        // Remove only the 2 oldest items
-        for (let i = 0; i < 2 && i < keys.length; i++) {
-          localStorage.removeItem(keys[i]);
-        }
-        console.log('Removed some old data to free space');
-        // Retry saving once
-        try {
-          localStorage.setItem(key, JSON.stringify(value));
-        } catch {
-          console.warn('Still failed to save after cleanup');
-        }
-      }
-    } catch (retryError) {
-      console.error('Cleanup failed:', retryError);
-    }
   }
 }
 
-// ──────────── OFFLINE MODE SUPPORT ────────────
-let isOfflineMode = false;
-let pendingSync: Array<() => Promise<void>> = [];
-
-export function enableOfflineMode() {
-  isOfflineMode = true;
-}
-
-export function disableOfflineMode() {
-  isOfflineMode = false;
-}
-
-export function isOfflineEnabled(): boolean {
-  return isOfflineMode || (typeof navigator !== 'undefined' && !navigator.onLine);
-}
-
-export function addToPendingSync(operation: () => Promise<void>) {
-  if (isOfflineEnabled()) {
-    pendingSync.push(operation);
-  }
-}
-
-export async function syncPendingOperations() {
-  if (!isOfflineEnabled() && pendingSync.length > 0) {
-    const operations = [...pendingSync];
-    pendingSync = [];
-    
-    for (const operation of operations) {
-      try {
-        await operation();
-      } catch (error) {
-        console.error('Failed to sync operation:', error);
-        // Re-add to pending if failed
-        pendingSync.push(operation);
-      }
-    }
-  }
-}
-
-// Auto-sync when coming back online
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    setTimeout(syncPendingOperations, 1000); // Wait 1 second before syncing
-  });
-}
+// ──────────── TIMER STATE PERSISTENCE ────────────
+const TIMER_STATE_KEY = 'nw_timer_state';
 
 // ──────────── AUTH STORE ────────────
 interface AuthStore {
-  user: UserProfile | null;
+  user: { id: string; email: string; username: string } | null;
   isLoading: boolean;
-  setUser: (user: UserProfile | null) => void;
-  setLoading: (loading: boolean) => void;
+  setUser: (user: { id: string; email: string; username: string } | null) => void;
+  setLoading: (isLoading: boolean) => void;
   logout: () => void;
 }
+
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,

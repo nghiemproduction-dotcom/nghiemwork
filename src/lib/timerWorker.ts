@@ -18,12 +18,28 @@ let workerSupported: boolean | null = null;
 
 const WORKER_CODE = `
 let id = null;
+let lastTick = 0;
+
+function scheduleNextTick() {
+  const now = Date.now();
+  const nextSecond = Math.ceil(now / 1000) * 1000;
+  const delay = Math.max(0, nextSecond - now);
+  
+  id = setTimeout(function() {
+    self.postMessage(1);
+    lastTick = Date.now();
+    // Schedule next tick to align with wall clock seconds
+    scheduleNextTick();
+  }, delay);
+}
+
 self.onmessage = function (e) {
   if (e.data === 'start') {
-    if (id !== null) clearInterval(id);
-    id = setInterval(function () { self.postMessage(1); }, 1000);
+    if (id !== null) clearTimeout(id);
+    lastTick = Date.now();
+    scheduleNextTick();
   } else if (e.data === 'stop') {
-    if (id !== null) { clearInterval(id); id = null; }
+    if (id !== null) { clearTimeout(id); id = null; }
   }
 };
 `;
@@ -53,7 +69,7 @@ function ensureWorker(): boolean {
   }
 }
 
-/** Start ticking – calls `onTick` every ~1 s via Worker (or setInterval fallback). */
+/** Start ticking – calls `onTick` every ~1 s via Worker (or precise fallback). */
 export function startTimerWorker(onTick: TickCallback): void {
   currentCallback = onTick;
 
@@ -63,11 +79,21 @@ export function startTimerWorker(onTick: TickCallback): void {
     };
     worker.postMessage('start');
   } else {
-    // Fallback
-    if (fallbackInterval !== null) clearInterval(fallbackInterval);
-    fallbackInterval = setInterval(() => {
-      if (currentCallback) currentCallback();
-    }, 1000);
+    // Fallback with precise timing
+    if (fallbackInterval !== null) clearTimeout(fallbackInterval);
+    
+    const scheduleNext = () => {
+      const now = Date.now();
+      const nextSecond = Math.ceil(now / 1000) * 1000;
+      const delay = Math.max(0, nextSecond - now);
+      
+      fallbackInterval = setTimeout(() => {
+        if (currentCallback) currentCallback();
+        scheduleNext();
+      }, delay);
+    };
+    
+    scheduleNext();
   }
 }
 
@@ -75,7 +101,7 @@ export function startTimerWorker(onTick: TickCallback): void {
 export function stopTimerWorker(): void {
   if (worker) worker.postMessage('stop');
   if (fallbackInterval !== null) {
-    clearInterval(fallbackInterval);
+    clearTimeout(fallbackInterval);
     fallbackInterval = null;
   }
   currentCallback = null;

@@ -2,17 +2,10 @@ import { useEffect, lazy, Suspense } from 'react';
 import { useSettingsStore, useAuthStore, useTaskStore, useChatStore, useGamificationStore, useTemplateStore } from '@/stores';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { checkDeadlineNotifications } from '@/lib/notifications';
-import { isOfflineEnabled, enableOfflineMode } from '@/stores';
-import { initializeOfflineSync } from '@/lib/offlineSync';
-import { initializePWA } from '@/lib/serviceWorkerRegistration';
-import { initializeStorageManagement } from '@/lib/offlineStorage';
-import { useAppLifecycle } from '@/hooks/useAppLifecycle';
-import { usePerformanceMonitor, debouncedSave } from '@/lib/performanceOptimization';
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
 import { UpdatePrompt } from '@/components/features/UpdatePrompt';
-import { OfflineBanner } from '@/components/features/OfflineBanner';
 import { TaskTimer } from '@/components/features/TaskTimer';
 import TasksPage from '@/pages/TasksPage';
 import AIPage from '@/pages/AIPage';
@@ -39,11 +32,15 @@ export default function App() {
   const tasks = useTaskStore(s => s.tasks);
   const markOverdue = useTaskStore(s => s.markOverdue);
 
-  // Initialize performance monitoring and app lifecycle
-  useAppLifecycle();
-  usePerformanceMonitor();
-
-  // Font scale — set on html root for rem-based sizing
+  // Initialize stores per user
+  useEffect(() => {
+    if (user) {
+      initTasks(user.id);
+      initChat(user.id);
+      initGamification(user.id);
+      initTemplates(user.id);
+    }
+  }, [user, initTasks, initChat, initGamification, initTemplates]);
   useEffect(() => {
     document.documentElement.style.setProperty('--font-scale', String(fontScale));
   }, [fontScale]);
@@ -56,27 +53,6 @@ export default function App() {
     }
   }, []);
 
-  // Initialize PWA and offline sync - simplified to prevent memory issues
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        await initializePWA();
-        // Only initialize offline sync if needed
-        if (navigator.onLine === false) {
-          await initializeOfflineSync();
-        }
-        // Initialize storage management less frequently
-        if (Math.random() < 0.1) { // 10% chance
-          await initializeStorageManagement();
-        }
-      } catch (error) {
-        console.error('Failed to initialize PWA/offline features:', error);
-      }
-    };
-    
-    initialize();
-  }, []);
-
   // Nếu thiếu cấu hình Supabase (VD: chưa set env trên Vercel), báo và dừng loading
   useEffect(() => {
     if (!isSupabaseConfigured) setLoading(false);
@@ -87,39 +63,22 @@ export default function App() {
     if (!isSupabaseConfigured) return;
     let mounted = true;
     
-    // Check if user was previously online and has data
-    const checkOfflineMode = () => {
-      if (isOfflineEnabled()) {
-        // Enable offline mode if no network
-        enableOfflineMode();
-        // Try to load guest user if no session
-        if (!user) {
-          setUser({ id: 'guest', email: 'guest@nghiemwork.local', username: 'Khách (Offline)' });
-          setLoading(false);
-        }
-        return;
-      }
-    };
-    
-    checkOfflineMode();
-    
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         if (mounted && session?.user) {
           const u = session.user;
           setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
-        } else if (mounted && !isOfflineEnabled()) {
-          // Only set to null if not in offline mode
+        } else if (mounted) {
           setLoading(false);
         }
       })
-      .catch(() => { if (mounted && !isOfflineEnabled()) setLoading(false); });
+      .catch(() => { if (mounted) setLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === 'SIGNED_IN' && session?.user) {
         const u = session.user;
         setUser({ id: u.id, email: u.email!, username: u.user_metadata?.username || u.email!.split('@')[0] });
-      } else if (event === 'SIGNED_OUT' && !isOfflineEnabled()) {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -128,12 +87,12 @@ export default function App() {
       }
     });
     return () => { mounted = false; subscription.unsubscribe(); };
-  }, [setLoading, setUser, user]);
+  }, [setLoading, setUser]);
 
   // Init stores per user
   useEffect(() => {
     if (user) {
-      const userId = user.id === 'guest' ? undefined : user.id;
+      const userId = user.id;
       initTasks(userId);
       initChat(userId);
       initGamification(userId);
@@ -233,7 +192,6 @@ export default function App() {
   return (
     <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)] landscape:max-w-none landscape:w-full landscape:px-4">
       <Toaster theme="dark" position="top-center" richColors closeButton />
-      <OfflineBanner />
       <InstallPrompt />
       <UpdatePrompt />
       <TaskTimer />
