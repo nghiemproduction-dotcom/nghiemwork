@@ -3,6 +3,9 @@ import { useSettingsStore, useAuthStore, useTaskStore, useChatStore, useGamifica
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { checkDeadlineNotifications } from '@/lib/notifications';
 import { isOfflineEnabled, enableOfflineMode } from '@/stores';
+import { initializeOfflineSync } from '@/lib/offlineSync';
+import { initializePWA } from '@/lib/serviceWorkerRegistration';
+import { initializeStorageManagement } from '@/lib/offlineStorage';
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
@@ -47,10 +50,25 @@ export default function App() {
     }
   }, []);
 
+  // Initialize PWA and offline sync
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        await initializePWA();
+        await initializeOfflineSync();
+        await initializeStorageManagement();
+      } catch (error) {
+        console.error('Failed to initialize PWA/offline features:', error);
+      }
+    };
+    
+    initialize();
+  }, []);
+
   // Nếu thiếu cấu hình Supabase (VD: chưa set env trên Vercel), báo và dừng loading
   useEffect(() => {
     if (!isSupabaseConfigured) setLoading(false);
-  }, []);
+  }, [setLoading]);
 
   // Auth session (chỉ chạy khi đã cấu hình Supabase)
   useEffect(() => {
@@ -109,7 +127,7 @@ export default function App() {
       initGamification(userId);
       initTemplates(userId);
     }
-  }, [user?.id]);
+  }, [user, initTasks, initChat, initGamification, initTemplates]);
 
   // Mark overdue + notifications - check every 10 seconds for real-time updates
   useEffect(() => {
@@ -124,7 +142,7 @@ export default function App() {
     check();
     const interval = setInterval(check, 10000); // 10 seconds for real-time
     return () => clearInterval(interval);
-  }, [user?.id, tasks.length, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
+  }, [user, tasks, markOverdue, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
 
   // Handle navigation events from template AI editor
   useEffect(() => {
