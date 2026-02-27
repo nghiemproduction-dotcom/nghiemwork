@@ -6,6 +6,8 @@ import { isOfflineEnabled, enableOfflineMode } from '@/stores';
 import { initializeOfflineSync } from '@/lib/offlineSync';
 import { initializePWA } from '@/lib/serviceWorkerRegistration';
 import { initializeStorageManagement } from '@/lib/offlineStorage';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { usePerformanceMonitor, debouncedSave } from '@/lib/performanceOptimization';
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
@@ -36,6 +38,10 @@ export default function App() {
   const initTemplates = useTemplateStore(s => s.initForUser);
   const tasks = useTaskStore(s => s.tasks);
   const markOverdue = useTaskStore(s => s.markOverdue);
+
+  // Initialize performance monitoring and app lifecycle
+  useAppLifecycle();
+  usePerformanceMonitor();
 
   // Font scale — set on html root for rem-based sizing
   useEffect(() => {
@@ -129,19 +135,28 @@ export default function App() {
     }
   }, [user, initTasks, initChat, initGamification, initTemplates]);
 
-  // Mark overdue + notifications - check every 10 seconds for real-time updates
+  // Mark overdue + notifications - check every 30 seconds instead of 10 for better performance
   useEffect(() => {
     if (!user) return;
     const notifiedSet = new Set<string>();
+    let isMounted = true;
+    
     const check = () => {
+      if (!isMounted) return;
+      
       markOverdue();
       if (notificationSettings.enabled) {
         checkDeadlineNotifications(tasks, timezone, notificationSettings.beforeDeadline, notifiedSet);
       }
     };
+    
     check();
-    const interval = setInterval(check, 10000); // 10 seconds for real-time
-    return () => clearInterval(interval);
+    const interval = setInterval(check, 30000); // 30 seconds instead of 10
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [user, tasks, markOverdue, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
 
   // Handle navigation events from template AI editor

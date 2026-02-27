@@ -28,7 +28,26 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function saveToStorage(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn('Failed to save to localStorage:', error);
+    // Try to free up space and retry
+    try {
+      const keys = Object.keys(localStorage);
+      const oldKeys = keys.filter(k => k.startsWith('nw_') && !k.includes('settings'));
+      if (oldKeys.length > 0) {
+        // Remove oldest entry
+        const oldestKey = oldKeys[0];
+        localStorage.removeItem(oldestKey);
+        console.log('Removed old data to free space:', oldestKey);
+        // Retry saving
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (retryError) {
+      console.error('Failed to save even after cleanup:', retryError);
+    }
+  }
 }
 
 // ──────────── OFFLINE MODE SUPPORT ────────────
@@ -192,8 +211,10 @@ function clearTimerState() {
 }
 
 // ── Visibility change: save state going to bg, recalculate coming back ──
+let visibilityChangeHandler: (() => void) | null = null;
+
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
+  visibilityChangeHandler = () => {
     // Guard: store may not be initialized yet at module load time.
     // useTaskStore is defined below; this listener fires later so it's safe.
     try {
@@ -212,12 +233,16 @@ if (typeof document !== 'undefined') {
     } catch {
       // Store not ready yet — ignore
     }
-  });
+  };
+  
+  document.addEventListener('visibilitychange', visibilityChangeHandler);
 }
 
 // ── Page unload: persist timer so it survives app kill / refresh ──
+let beforeUnloadHandler: (() => void) | null = null;
+
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+  beforeUnloadHandler = () => {
     try {
       const timer = useTaskStore.getState().timer;
       if ((timer.isRunning || timer.isPaused) && timer.startTime) {
@@ -226,7 +251,9 @@ if (typeof window !== 'undefined') {
     } catch {
       // Store not ready yet — ignore
     }
-  });
+  };
+  
+  window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 const defaultTimer: TimerState = {
@@ -556,8 +583,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const newTimer = { ...timer, elapsed };
       set({ timer: newTimer });
       
-      // Save timer state every 10 seconds
-      if (elapsed % 10 === 0) {
+      // Save timer state every 30 seconds instead of 10 to reduce I/O
+      if (elapsed % 30 === 0) {
         saveTimerState(newTimer);
       }
     }
@@ -600,7 +627,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   assignAsSubtask: (taskId, parentId) => {
-    let updated = get().tasks.map(t => {
+    const updated = get().tasks.map(t => {
       if (t.id === taskId) return { ...t, parentId };
       if (t.id === parentId) return { ...t, children: [...(t.children || []), taskId] };
       return t;
@@ -614,7 +641,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const task = get().tasks.find(t => t.id === taskId);
     if (!task?.parentId) return;
     const parentId = task.parentId;
-    let updated = get().tasks.map(t => {
+    const updated = get().tasks.map(t => {
       if (t.id === taskId) return { ...t, parentId: undefined };
       if (t.id === parentId) return { ...t, children: (t.children || []).filter(c => c !== taskId) };
       return t;
