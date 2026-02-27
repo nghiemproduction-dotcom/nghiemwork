@@ -523,12 +523,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     if (timer.isRunning && timer.startTime && !timer.isPaused) {
       const totalElapsed = Math.floor((Date.now() - timer.startTime) / 1000);
       const elapsed = totalElapsed - timer.totalPausedDuration;
-      const newTimer = { ...timer, elapsed };
-      set({ timer: newTimer });
       
-      // Save timer state every 30 seconds instead of 10 to reduce I/O
-      if (elapsed % 30 === 0) {
-        saveTimerState(newTimer);
+      // Only update if elapsed changed
+      if (elapsed !== timer.elapsed) {
+        const newTimer = { ...timer, elapsed };
+        set({ timer: newTimer });
+        
+        // Save timer state every 30 seconds
+        if (elapsed > 0 && elapsed % 30 === 0) {
+          saveTimerState(newTimer);
+        }
       }
     }
   },

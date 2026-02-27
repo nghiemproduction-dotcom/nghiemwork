@@ -76,8 +76,8 @@ export function TaskTimer() {
       return;
     }
 
-    // Reset tracking on a fresh timer start
-    if (timer.elapsed <= 1) {
+    // Reset tracking on a fresh timer start (elapsed is 0 and just started)
+    if (timer.elapsed === 0 && timer.startTime) {
       lastAnnouncedRef.current = 0;
       lastEncourageRef.current = 0;
       encourageThresholdRef.current = 120 + Math.floor(Math.random() * 60);
@@ -85,82 +85,60 @@ export function TaskTimer() {
     }
 
     startTimerWorker(() => {
-      // 1. Tick — recalculate elapsed from wall clock (always accurate)
+      // 1. Tick — recalculate elapsed from wall clock
       useTaskStore.getState().tickTimer();
 
       const currentTimer = useTaskStore.getState().timer;
       const elapsed = currentTimer.elapsed;
 
-      // 2. Tick sound (only when tab visible to avoid audio queue buildup)
+      // 2. Tick sound (only when tab visible)
       if (!document.hidden && tickSoundRef.current) {
         playTick();
       }
 
-      // 3. Chime + voice announcement every 30 seconds
-      //    (Throttled: only process once per 30s boundary)
-      const current30s = Math.floor(elapsed / 30) * 30;
-      if (current30s > lastAnnouncedRef.current && elapsed > 0) {
-        lastAnnouncedRef.current = current30s;
-        
-        // Chime plays even in background, but throttled
-        if (!document.hidden || elapsed % 60 === 0) { // Every 60s in background, 30s when visible
+      // 3. Chime every 30 seconds
+      if (elapsed > 0 && elapsed % 30 === 0 && elapsed !== lastAnnouncedRef.current) {
+        lastAnnouncedRef.current = elapsed;
+        if (!document.hidden) {
           playChime();
         }
-        
-        // Voice: speak time every 30s when visible, every 2 mins in background
-        if (voiceRef.current) {
-          const shouldSpeak = !document.hidden || elapsed % 120 === 0;
-          if (shouldSpeak) {
-            // useVietnameseVoice already handles cancel safely with delay
-            setTimeout(() => announceTime(elapsed), 600);
+        // Voice announcement
+        if (voiceRef.current && !document.hidden) {
+          setTimeout(() => announceTime(elapsed), 300);
+        }
+      }
+
+      // 4. AI encouragement every 2–3 minutes
+      if (!document.hidden && elapsed > 0) {
+        const timeSinceLast = elapsed - lastEncourageRef.current;
+        if (timeSinceLast >= encourageThresholdRef.current) {
+          lastEncourageRef.current = elapsed;
+          encourageThresholdRef.current = 120 + Math.floor(Math.random() * 60);
+          const task = taskRef.current;
+          if (voiceRef.current && task) {
+            const msg = `Bạn đang làm "${task.title}". ${getEncouragement()}`;
+            setTimeout(() => speak(msg), 500);
           }
         }
       }
 
-      // 4. AI encouragement every 2–3 minutes (only when visible)
-      if (
-        !document.hidden &&
-        elapsed > 0 &&
-        elapsed - lastEncourageRef.current >= encourageThresholdRef.current
-      ) {
-        lastEncourageRef.current = elapsed;
-        encourageThresholdRef.current = 120 + Math.floor(Math.random() * 60);
-        const task = taskRef.current;
-        if (voiceRef.current && task) {
-          // useVietnameseVoice already handles cancel safely
-          const msg = `Bạn đang làm "${task.title}". ${getEncouragement()}`;
-          setTimeout(() => speak(msg), 800);
-        }
-      }
-
-      // 5. Pomodoro phase check (fire ONCE per phase, not every second)
+      // 5. Pomodoro phase check
       const pomo = pomodoroRef.current;
-      if (
-        pomo.enabled &&
-        currentTimer.pomodoroPhase === 'work' &&
-        !pomodoroTriggeredRef.current
-      ) {
+      if (pomo.enabled && currentTimer.pomodoroPhase === 'work' && !pomodoroTriggeredRef.current) {
         const workSeconds = pomo.workMinutes * 60;
         if (elapsed >= workSeconds) {
           pomodoroTriggeredRef.current = true;
-          const isLongBreak =
-            currentTimer.pomodoroSession % pomo.sessionsBeforeLongBreak === 0;
+          const isLongBreak = currentTimer.pomodoroSession % pomo.sessionsBeforeLongBreak === 0;
           playBreakSound();
           if (voiceRef.current) {
-            // useVietnameseVoice already handles cancel safely
-            speak(
-              isLongBreak
-                ? 'Nghỉ dài nhé! Bạn đã làm rất tốt!'
-                : 'Nghỉ ngắn thôi, sắp tiếp tục!',
-            );
+            speak(isLongBreak ? 'Nghỉ dài nhé! Bạn đã làm rất tốt!' : 'Nghỉ ngắn thôi, sắp tiếp tục!');
           }
         }
       }
     });
 
     return () => stopTimerWorker();
-    // tickTimer, playTick, announceTime, speak are all stable refs
-  }, [timer.isRunning, timer.isPaused, timer.elapsed, tickTimer, playTick, announceTime, speak]);
+  }, [timer.isRunning, timer.isPaused, tickTimer, playTick, announceTime, speak]);
 
   // ═══════════════════════════════════════════════════════════════
   //  WAKE LOCK — prevent the screen from sleeping while timing
