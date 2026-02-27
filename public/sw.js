@@ -1,6 +1,8 @@
-const CACHE_NAME = 'nghiemwork-v1';
+const CACHE_NAME = 'nghiemwork-v2';
+const BUILD_VERSION = '2.0.0'; // Increment this on each deploy
 
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing new version:', BUILD_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.addAll(['/', '/index.html', '/manifest.json', '/og-image.jpg'])
@@ -9,11 +11,20 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating new version:', BUILD_VERSION);
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => clients.claim())
   );
+});
+
+// Listen for skip waiting message from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW] Skip waiting triggered');
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

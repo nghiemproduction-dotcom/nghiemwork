@@ -5,7 +5,7 @@ import { formatTimeRemaining, formatDeadlineDisplay } from '@/lib/notifications'
 import {
   X, Calendar, Clock, RotateCcw, DollarSign, ChevronDown, ChevronRight,
   ListTree, Image as ImageIcon, Youtube, Play, CheckCircle2, AlertTriangle,
-  Link2, Eye, Edit3, Save,
+  Link2, Eye, Edit3, Save, Plus, FileText,
 } from 'lucide-react';
 import type { Task, EisenhowerQuadrant, TaskFinance, MediaBlock } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
@@ -37,6 +37,8 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
   const hasChildren = useTaskStore(s => s.hasChildren);
   const timezone = useSettingsStore(s => s.timezone);
   const templates = useTemplateStore(s => s.templates);
+  const addTemplate = useTemplateStore(s => s.addTemplate);
+  const [showAddToTemplate, setShowAddToTemplate] = useState(false);
 
   const subtasks = tasks.filter(t => t.parentId === task.id).sort((a, b) => a.order - b.order);
   const template = task.templateId ? templates.find(t => t.id === task.templateId) : null;
@@ -173,7 +175,63 @@ export function TaskViewModal({ task, onClose, onEdit }: TaskViewModalProps) {
             </div>
           )}
 
-          {/* Notes */}
+          {/* Not from template - show add to template option */}
+          {!template && !groupTemplate && (
+            <div className="px-3 py-3 rounded-xl bg-[rgba(251,191,36,0.05)] border border-[rgba(251,191,36,0.15)]">
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-[rgba(251,191,36,0.1)] flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} className="text-[var(--warning)]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--text-secondary)] mb-1">
+                    Việc này chưa có trong MẪU. Thêm vào MẪU để dùng lại cho lần sau?
+                  </p>
+                  {!showAddToTemplate ? (
+                    <button 
+                      onClick={() => setShowAddToTemplate(true)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-[var(--warning)] hover:opacity-80 active:opacity-60"
+                    >
+                      <Plus size={14} /> Thêm vào MẪU
+                    </button>
+                  ) : (
+                    <div className="space-y-2 mt-2">
+                      <input 
+                        type="text" 
+                        placeholder="Ghi chú cho mẫu (tùy chọn)..."
+                        className="w-full bg-[var(--bg-elevated)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                        id="template-notes-input"
+                      />
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setShowAddToTemplate(false)}
+                          className="flex-1 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] bg-[var(--bg-elevated)] active:opacity-70"
+                        >
+                          Hủy
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const notes = (document.getElementById('template-notes-input') as HTMLInputElement)?.value;
+                            addTemplate({
+                              title: task.title,
+                              quadrant: task.quadrant,
+                              recurring: task.recurring,
+                              notes: notes || undefined,
+                              templateType: 'single',
+                              xpReward: task.xpReward,
+                            });
+                            setShowAddToTemplate(false);
+                          }}
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--bg-base)] bg-[var(--warning)] active:opacity-80 flex items-center justify-center gap-1"
+                        >
+                          <Plus size={12} /> Lưu MẪU
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {task.notes && (
             <div className="px-3 py-2.5 rounded-xl bg-[var(--bg-surface)]">
               <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap">{task.notes}</p>

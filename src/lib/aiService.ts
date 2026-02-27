@@ -38,6 +38,7 @@ export interface AIAction {
   icon?: string;
   xpCost?: number;
   xpReward?: number;
+  media?: { type: 'youtube' | 'image' | 'text'; content: string }[];
 }
 
 export function parseAIResponse(content: string): { text: string; actions: AIAction[] } {

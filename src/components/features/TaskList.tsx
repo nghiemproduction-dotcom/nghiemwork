@@ -180,6 +180,11 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
                   {expanded ? <ChevronDown size={9} /> : <ChevronRight size={9} />}
                 </button>
               )}
+              {deadlineInfo?.urgent && task.status !== 'done' && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold text-[var(--error)] bg-[rgba(248,113,113,0.15)] px-1.5 py-0.5 rounded-full animate-pulse">
+                  🔥 Làm Ngay
+                </span>
+              )}
               {hasDeps && (
                 <span className="flex items-center gap-0.5 text-[10px] text-[var(--warning)]"><Link2 size={9} /> Phụ thuộc</span>
               )}

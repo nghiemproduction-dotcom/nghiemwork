@@ -108,7 +108,7 @@ export default function AIPage() {
             });
             createdNames.push(s);
           });
-          // Also create the parent as a single template
+          // Also create the parent as a single template with media support
           addTemplate({
             title: action.title,
             quadrant: (action.quadrant as EisenhowerQuadrant) || 'do_first',
@@ -116,8 +116,9 @@ export default function AIPage() {
             notes: action.notes,
             templateType: 'single',
             xpReward: action.xpReward,
+            media: action.media?.map((m, i) => ({ ...m, id: `media_${i}_${Date.now()}` })),
           });
-          return `Đã tạo ${createdNames.length + 1} việc đơn: "${action.title}" và ${createdNames.length} việc liên quan. Vào tab Nhóm Việc để gom chúng thành nhóm.`;
+          return `Đã tạo ${createdNames.length + 1} việc đơn: "${action.title}" và ${createdNames.length} việc liên quan${action.media ? ` (có ${action.media.length} nội dung media)` : ''}. Vào tab Nhóm Việc để gom chúng thành nhóm.`;
         } else {
           addTemplate({
             title: action.title,
@@ -126,8 +127,9 @@ export default function AIPage() {
             notes: action.notes,
             templateType: 'single',
             xpReward: action.xpReward,
+            media: action.media?.map((m, i) => ({ ...m, id: `media_${i}_${Date.now()}` })),
           });
-          return `Đã tạo việc đơn "${action.title}"${action.xpReward ? ` (+${action.xpReward} XP)` : ''}`;
+          return `Đã tạo việc đơn "${action.title}"${action.xpReward ? ` (+${action.xpReward} XP)` : ''}${action.media ? ` (có ${action.media.length} nội dung media)` : ''}`;
         }
       }
       case 'USE_TEMPLATE': {

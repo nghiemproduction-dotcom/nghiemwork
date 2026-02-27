@@ -5,6 +5,7 @@ import { checkDeadlineNotifications } from '@/lib/notifications';
 import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
+import { UpdatePrompt } from '@/components/features/UpdatePrompt';
 import { OfflineBanner } from '@/components/features/OfflineBanner';
 import { TaskTimer } from '@/components/features/TaskTimer';
 import TasksPage from '@/pages/TasksPage';
@@ -91,7 +92,7 @@ export default function App() {
     }
   }, [user?.id]);
 
-  // Mark overdue + notifications
+  // Mark overdue + notifications - check every 10 seconds for real-time updates
   useEffect(() => {
     if (!user) return;
     const notifiedSet = new Set<string>();
@@ -102,7 +103,7 @@ export default function App() {
       }
     };
     check();
-    const interval = setInterval(check, 30000);
+    const interval = setInterval(check, 10000); // 10 seconds for real-time
     return () => clearInterval(interval);
   }, [user?.id, tasks.length, timezone, notificationSettings.enabled, notificationSettings.beforeDeadline]);
 
@@ -154,6 +155,7 @@ export default function App() {
       <Toaster theme="dark" position="top-center" richColors closeButton />
       <OfflineBanner />
       <InstallPrompt />
+      <UpdatePrompt />
       <TaskTimer />
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">{renderPage()}</main>
       <BottomNav />

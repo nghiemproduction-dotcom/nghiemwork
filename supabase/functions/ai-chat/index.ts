@@ -41,10 +41,15 @@ Khi người dùng yêu cầu thực hiện hành động, trả về lệnh JSO
 {"type":"NAVIGATE","page":"tasks|stats|settings|achievements|templates|finance|weekly_review"}
 :::END
 
-### Tạo việc mẫu (Template) - với EXP
+### Tạo việc mẫu (Template) - với EXP và YouTube
 :::ACTION
-{"type":"ADD_TEMPLATE","title":"tên mẫu","quadrant":"do_first","subtasks":["việc con 1","việc con 2"],"notes":"ghi chú","xpReward":10}
+{"type":"ADD_TEMPLATE","title":"tên mẫu","quadrant":"do_first","subtasks":["việc con 1","việc con 2"],"notes":"ghi chú","xpReward":10,"media":[{"type":"youtube","content":"https://www.youtube.com/embed/VIDEO_ID"}]}
 :::END
+
+Khi người dùng yêu cầu tạo việc mẫu có video YouTube, hãy:
+1. Tạo template với media chứa link YouTube embed
+2. Dùng định dạng: https://www.youtube.com/embed/VIDEO_ID
+3. Có thể kết hợp nhiều media: youtube, image, text
 
 ### Sử dụng mẫu để tạo việc
 :::ACTION
