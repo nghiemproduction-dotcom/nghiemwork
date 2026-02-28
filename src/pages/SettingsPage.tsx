@@ -69,6 +69,7 @@ export default function SettingsPage() {
   const [canInstall, setCanInstall] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [installChecked, setInstallChecked] = useState(false);
 
   useEffect(() => {
     // Check if already installed
@@ -85,15 +86,42 @@ export default function SettingsPage() {
       e.preventDefault();
       setDeferredPrompt(e);
       setCanInstall(true);
+      setInstallChecked(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+    
+    // Check if already has prompt available (for browsers that support it)
+    if ('getInstalledRelatedApps' in navigator) {
+      (navigator as any).getInstalledRelatedApps().then((apps: any[]) => {
+        if (apps.length === 0) {
+          // App not installed, can show install
+          setInstallChecked(true);
+        }
+      }).catch(() => {
+        setInstallChecked(true);
+      });
+    } else {
+      // Delay to check if prompt was captured
+      setTimeout(() => setInstallChecked(true), 1000);
+    }
+    
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) {
-      alert('Trình duyệt không hỗ trợ cài đặt tự động.\n\nHướng dẫn:\n1. Chrome: Menu ⋮ → Thêm vào màn hình chính\n2. Safari iOS: Chia sẻ → Thêm vào màn hình chính\n3. Samsung: Menu → Thêm ứng dụng vào MH chính');
+      // Try to trigger the prompt again or show manual instructions
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        alert('Hướng dẫn cài đặt iOS:\n\n1. Bấm nút Chia sẻ (Share) ở thanh công cụ Safari\n2. Kéo xuống chọn "Thêm vào màn hình chính"\n3. Bấm "Thêm" để xác nhận');
+      } else if (isAndroid) {
+        alert('Hướng dẫn cài đặt Android:\n\n1. Bấm menu ⋮ (3 chấm) ở góc phải Chrome\n2. Chọn "Thêm vào màn hình chính" hoặc "Cài đặt ứng dụng"\n3. Bấm "Cài đặt" để xác nhận');
+      } else {
+        alert('Hướng dẫn cài đặt:\n\n1. Chrome/Edge: Menu → Thêm vào màn hình chính\n2. Safari (iOS): Chia sẻ → Thêm vào màn hình chính\n3. Samsung Internet: Menu → Thêm ứng dụng vào MH chính');
+      }
       return;
     }
     
@@ -435,7 +463,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Install App */}
-      {!isStandalone && (
+      {!isStandalone && installChecked && (
         <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
           <div className="flex items-center gap-2.5 mb-3">
             <Home size={18} className="text-[var(--accent-primary)]" />
@@ -460,7 +488,7 @@ export default function SettingsPage() {
           </div>
           <button onClick={handleInstallApp}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[var(--bg-base)] bg-[var(--accent-primary)] active:opacity-80 min-h-[44px] transition-all">
-            <Download size={16} /> Cài đặt ngay
+            <Download size={16} /> {deferredPrompt ? 'Cài đặt ngay' : 'Hướng dẫn cài đặt'}
           </button>
         </div>
       )}
