@@ -4,7 +4,7 @@ import { useTickSound } from '@/hooks/useTickSound';
 import { useVietnameseVoice } from '@/hooks/useVietnameseVoice';
 import { playChime, playCompletionSound, playBreakSound, getEncouragement } from '@/lib/soundEffects';
 import { startTimerWorker, stopTimerWorker } from '@/lib/timerWorker';
-import { Pause, Play, Square, CheckCircle2 } from 'lucide-react';
+import { Pause, Play, Square } from 'lucide-react';
 
 // Helper to handle WakeLock API with proper typing
 function requestWakeLock(): Promise<WakeLock | null> {
@@ -36,7 +36,6 @@ export function TaskTimer() {
   const storeStopTimer = useTaskStore((s) => s.stopTimer);
   const pauseTimer = useTaskStore((s) => s.pauseTimer);
   const resumeTimer = useTaskStore((s) => s.resumeTimer);
-  const completeTask = useTaskStore((s) => s.completeTask);
   const tickSoundEnabled = useSettingsStore((s) => s.tickSoundEnabled);
   const voiceEnabled = useSettingsStore((s) => s.voiceEnabled);
   const pomodoroSettings = useSettingsStore((s) => s.pomodoroSettings);
@@ -46,11 +45,7 @@ export function TaskTimer() {
   const { speak, announceTime, announceCompletion } = useVietnameseVoice();
 
   // ── Local state ──
-  const [showCompletion, setShowCompletion] = useState(false);
-  const [completionInfo, setCompletionInfo] = useState({ title: '', duration: 0 });
-  const [showConfirmStop, setShowConfirmStop] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
-  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
 
   const currentTask = tasks.find((t) => t.id === timer.taskId);
 
@@ -181,63 +176,29 @@ export function TaskTimer() {
   }, [timer.isRunning, timer.isPaused]);
 
   // ── Handlers ──
-  // Smart complete: double click or long press to complete
-  const handleCompleteClick = useCallback(() => {
+  // STOP: Just stop timer, save accumulated duration to task, but DON'T complete
+  const handleStop = useCallback(() => {
     if (!currentTask) return;
-    // Just stop timer - require manual task completion from list
+    
+    // Stop the timer worker
     stopTimerWorker();
+    
+    // Save accumulated duration to the task (for resume later)
+    // This is different from complete - task remains pending
+    const storeTimer = useTaskStore.getState().timer;
+    if (storeTimer.elapsed > 0) {
+      // Update task with accumulated duration but don't mark as done
+      useTaskStore.getState().updateTask(currentTask.id, {
+        duration: (currentTask.duration || 0) + storeTimer.elapsed
+      });
+    }
+    
+    // Stop timer in store
     storeStopTimer();
   }, [currentTask, storeStopTimer]);
 
-  // Long press handlers for complete
-  const handleMouseDown = useCallback(() => {
-    setIsLongPressing(true);
-    const timeoutId = setTimeout(() => {
-      const storeTimer = useTaskStore.getState().timer;
-      if (currentTask && storeTimer.elapsed > 0) {
-        setCompletionInfo({ title: currentTask.title, duration: storeTimer.elapsed });
-        stopTimerWorker();
-        completeTask(currentTask.id, storeTimer.elapsed);
-        playCompletionSound();
-        if (voiceEnabled) {
-          setTimeout(() => announceCompletion(currentTask.title, storeTimer.elapsed), 300);
-        }
-        setShowCompletion(true);
-        setTimeout(() => setShowCompletion(false), 4000);
-      }
-      setIsLongPressing(false);
-    }, 1500); // 1.5 seconds long press
-    setLongPressTimer(timeoutId);
-  }, [currentTask, completeTask, voiceEnabled, announceCompletion]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsLongPressing(false);
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  }, [longPressTimer]);
-
-  const handleTouchStart = handleMouseDown;
-  const handleTouchEnd = handleMouseUp;
-
-  const handleStop = useCallback(() => {
-    if (timer.elapsed > 30) {
-      // Show confirmation for stopping after 30 seconds
-      setShowConfirmStop(true);
-      setTimeout(() => setShowConfirmStop(false), 3000);
-    } else {
-      // Stop immediately if less than 30 seconds
-      stopTimerWorker();
-      storeStopTimer();
-    }
-  }, [timer.elapsed, storeStopTimer]);
-
-  const confirmStop = useCallback(() => {
-    stopTimerWorker();
-    storeStopTimer();
-    setShowConfirmStop(false);
-  }, [storeStopTimer]);
+  // No complete button in timer - user must complete from task list manually
+  // This prevents accidental completion when just taking a break
 
   const handlePauseResume = useCallback(() => {
     if (timer.isPaused) resumeTimer();
@@ -266,23 +227,6 @@ export function TaskTimer() {
   };
 
   // ── Render ──
-  if (showCompletion) {
-    return (
-      <div className="fixed inset-0 z-[90] flex items-center justify-center p-6 bg-black/80">
-        <div className="w-full max-w-sm glass-strong rounded-2xl p-6 text-center animate-slide-up">
-          <div className="size-16 mx-auto mb-4 rounded-full bg-[rgba(52,211,153,0.2)] flex items-center justify-center">
-            <CheckCircle2 size={32} className="text-[var(--success)]" />
-          </div>
-          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">Hoàn thành!</h3>
-          <p className="text-sm text-[var(--text-secondary)] mb-2">{completionInfo.title}</p>
-          <p className="text-2xl font-mono font-bold text-[var(--accent-primary)] tabular-nums">
-            {formatTime(completionInfo.duration)}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if ((!timer.isRunning && !timer.isPaused) || !currentTask) return null;
 
   const pomodoroLabel = getPomodoroLabel();
@@ -334,29 +278,23 @@ export function TaskTimer() {
           >
             {timer.isPaused ? <Play size={18} /> : <Pause size={18} />}
           </button>
-          {showConfirmStop ? (
+          
+          {/* STOP button - only stops timer, does NOT complete task */}
+          {showStopConfirm ? (
             <button
-              onClick={confirmStop}
+              onClick={handleStop}
               className="px-3 h-10 rounded-xl bg-[rgba(248,113,113,0.3)] flex items-center justify-center text-[var(--error)] active:opacity-70 text-xs font-semibold animate-pulse"
             >
               Xác nhận dừng?
             </button>
           ) : (
             <button
-              onClick={handleStop}
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              className={`size-10 rounded-xl flex items-center justify-center active:opacity-70 transition-all ${
-                isLongPressing 
-                  ? 'bg-[rgba(52,211,153,0.4)] text-[var(--success)] scale-95' 
-                  : 'bg-[rgba(248,113,113,0.2)] text-[var(--error)]'
-              }`}
-              aria-label={isLongPressing ? 'Đang giữ để hoàn thành...' : 'Giữ 1.5s để hoàn thành, bấm để dừng'}
+              onClick={() => timer.elapsed > 30 ? setShowStopConfirm(true) : handleStop()}
+              className="size-10 rounded-xl bg-[rgba(248,113,113,0.2)] flex items-center justify-center text-[var(--error)] active:opacity-70 transition-all hover:bg-[rgba(248,113,113,0.3)]"
+              aria-label="Dừng - Lưu thời gian nhưng chưa hoàn thành"
+              title="Dừng để nghỉ - Việc chưa hoàn thành"
             >
-              {isLongPressing ? <CheckCircle2 size={20} /> : <Square size={18} />}
+              <Square size={18} />
             </button>
           )}
         </div>

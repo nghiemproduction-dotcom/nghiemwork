@@ -68,7 +68,7 @@ interface TaskStore {
   setActiveTab: (tab: TabType) => void;
   setSearchQuery: (q: string) => void;
   addTask: (title: string, quadrant?: EisenhowerQuadrant, deadline?: number, recurring?: RecurringConfig, deadlineDate?: string, deadlineTime?: string, parentId?: string, media?: MediaBlock[], finance?: TaskFinance, templateId?: string, xpReward?: number, groupTemplateId?: string, topic?: string) => string;
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'quadrant' | 'deadline' | 'recurring' | 'notes' | 'deadlineDate' | 'deadlineTime' | 'finance' | 'parentId' | 'dependsOn' | 'xpReward' | 'groupTemplateId' | 'templateId' | 'topic'>>) => void;
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'quadrant' | 'deadline' | 'recurring' | 'notes' | 'deadlineDate' | 'deadlineTime' | 'finance' | 'parentId' | 'dependsOn' | 'xpReward' | 'groupTemplateId' | 'templateId' | 'topic' | 'duration'>>) => void;
   removeTask: (id: string) => void; // Move to trash
   deletePermanently: (id: string) => void; // Delete from trash
   restoreFromTrash: (id: string) => void; // Restore from trash
