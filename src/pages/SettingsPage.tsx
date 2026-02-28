@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useTaskStore, useAuthStore, useSettingsStore, useGamificationStore, useTemplateStore } from '@/stores';
 import { supabase } from '@/lib/supabase';
 import { requestNotificationPermission, canSendNotification } from '@/lib/notifications';
@@ -7,8 +7,13 @@ import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
-  Smartphone, Moon, Battery,
+  Smartphone, Moon, Battery, Home,
 } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 const TIMEZONES = [
   { label: 'Việt Nam (GMT+7)', value: 'Asia/Ho_Chi_Minh' },
@@ -59,6 +64,49 @@ export default function SettingsPage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [changePwLoading, setChangePwLoading] = useState(false);
   const [changePwMsg, setChangePwMsg] = useState('');
+
+  // Install app state
+  const [canInstall, setCanInstall] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Check if already installed
+    const checkStandalone = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches 
+        || (window.navigator as { standalone?: boolean }).standalone 
+        || document.referrer.includes('android-app://');
+      setIsStandalone(standalone);
+    };
+    checkStandalone();
+
+    // Listen for install prompt
+    const handler = (e: BeforeInstallPromptEvent) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setCanInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) {
+      alert('Trình duyệt không hỗ trợ cài đặt tự động.\n\nHướng dẫn:\n1. Chrome: Menu ⋮ → Thêm vào màn hình chính\n2. Safari iOS: Chia sẻ → Thêm vào màn hình chính\n3. Samsung: Menu → Thêm ứng dụng vào MH chính');
+      return;
+    }
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      toast.success('Đã cài đặt thành công!');
+      setIsStandalone(true);
+    }
+    setDeferredPrompt(null);
+    setCanInstall(false);
+  };
 
   const fontSizes = [
     { label: 'Nhỏ', value: 0.85 },
@@ -375,7 +423,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Clear data */}
-      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)]">
+      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
         <div className="flex items-center gap-2.5 mb-3">
           <AlertTriangle size={18} className="text-[var(--error)]" />
           <span className="text-sm font-medium text-[var(--text-primary)]">Dữ liệu</span>
@@ -384,6 +432,42 @@ export default function SettingsPage() {
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium text-[var(--error)] bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.2)] active:opacity-70 min-h-[44px]">
           <Trash2 size={16} /> Xóa toàn bộ dữ liệu
         </button>
+      </div>
+
+      {/* Install App */}
+      {!isStandalone && (
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
+          <div className="flex items-center gap-2.5 mb-3">
+            <Home size={18} className="text-[var(--accent-primary)]" />
+            <div>
+              <span className="text-sm font-medium text-[var(--text-primary)] block">Cài đặt ứng dụng</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Thêm vào màn hình chính để dùng như app</span>
+            </div>
+          </div>
+          <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="text-[var(--accent-primary)]">✓</span>
+              <span>Mở nhanh từ màn hình chính</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="text-[var(--accent-primary)]">✓</span>
+              <span>Không cần mở browser</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+              <span className="text-[var(--accent-primary)]">✓</span>
+              <span>Hoạt động offline</span>
+            </div>
+          </div>
+          <button onClick={handleInstallApp}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[var(--bg-base)] bg-[var(--accent-primary)] active:opacity-80 min-h-[44px] transition-all">
+            <Download size={16} /> Cài đặt ngay
+          </button>
+        </div>
+      )}
+
+      {/* App Version */}
+      <div className="text-center py-4">
+        <p className="text-[10px] text-[var(--text-muted)]">NghiemWork v1.0.0</p>
       </div>
     </div>
   );

@@ -32,28 +32,18 @@ export function InstallPrompt() {
     const dismissed = localStorage.getItem('nw_install_dismissed');
     if (dismissed) return;
 
+    // Only show if explicitly requested (not auto-show)
+    // User can request via settings page
     const handler = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowPrompt(true);
+      // Don't auto-show popup anymore
+      // setShowPrompt(true); // Disabled - user must use settings instead
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-    
-    // Also check if prompt is available after a short delay
-    // Some browsers fire the event before React mounts
-    const checkTimeout = setTimeout(() => {
-      if (!deferredPrompt && !dismissed && !isStandalone) {
-        // Try to trigger the prompt check
-        window.dispatchEvent(new Event('beforeinstallprompt-check'));
-      }
-    }, 2000);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      clearTimeout(checkTimeout);
-    };
-  }, [isStandalone, deferredPrompt]);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, [isStandalone]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
