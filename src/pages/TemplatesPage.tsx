@@ -283,7 +283,7 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
   const [healthMetrics, setHealthMetrics] = useState(template?.healthMetrics || {});
 
   const qConfig = QUADRANT_LABELS[quadrant];
-  const isHealthTopic = topic === 'SỨC KHỎE' || topic === 'Suc khoe' || topic?.toLowerCase().includes('sức khỏe');
+  // Health metrics removed as per user request - no longer show health stats for SỨC KHỎE topic
 
   const handleAddMedia = () => {
     const val = mediaInput.trim();
@@ -313,7 +313,7 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
       finance: showFinance ? finance : undefined,
       xpReward: showXpInput && xpReward > 0 ? xpReward : undefined,
       templateType: 'single',
-      healthMetrics: isHealthTopic && Object.keys(healthMetrics).length > 0 ? healthMetrics : undefined,
+      healthMetrics: undefined, // Removed - no longer storing health metrics in templates
     });
   };
 
@@ -413,60 +413,6 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
               className="flex-1 bg-[var(--bg-surface)] rounded-xl px-3 py-2 text-sm text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
               inputMode="numeric"
             />
-          </div>
-        )}
-
-        {/* Health Metrics - Only for SỨC KHỎE topic */}
-        {isHealthTopic && (
-          <div className="space-y-3 p-3 rounded-xl bg-[rgba(52,211,153,0.05)] border border-[rgba(52,211,153,0.2)] animate-slide-up">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">💪</span>
-              <span className="text-xs font-medium text-[var(--success)]">Số liệu Sức khỏe</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Cân nặng (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={healthMetrics.weight || ''}
-                  onChange={e => setHealthMetrics({ ...healthMetrics, weight: parseFloat(e.target.value) || undefined })}
-                  placeholder="65.5"
-                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Vòng bụng (cm)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={healthMetrics.waist || ''}
-                  onChange={e => setHealthMetrics({ ...healthMetrics, waist: parseFloat(e.target.value) || undefined })}
-                  placeholder="80"
-                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Nước uống (ml)</label>
-                <input
-                  type="number"
-                  value={healthMetrics.water || ''}
-                  onChange={e => setHealthMetrics({ ...healthMetrics, water: parseInt(e.target.value) || undefined })}
-                  placeholder="2500"
-                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Calo tiêu hao</label>
-                <input
-                  type="number"
-                  value={healthMetrics.calories || ''}
-                  onChange={e => setHealthMetrics({ ...healthMetrics, calories: parseInt(e.target.value) || undefined })}
-                  placeholder="500"
-                  className="w-full bg-[var(--bg-surface)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
-                />
-              </div>
-            </div>
           </div>
         )}
 
