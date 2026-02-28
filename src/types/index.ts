@@ -38,6 +38,18 @@ export interface PomodoroSettings {
   sessionsBeforeLongBreak: number;
 }
 
+export interface TimerSession {
+  id: string;
+  taskId: string;
+  startTime: number; // Thời điểm bắt đầu
+  endTime?: number; // Thời điểm kết thúc (khi bấm stop)
+  completedAt?: number; // Thời điểm hoàn thành (khi bấm hoàn thành)
+  pauseTimes: number[]; // Mảng các thời điểm tạm dừng
+  resumeTimes: number[]; // Mảng các thời điểm tiếp tục
+  elapsed: number; // Tổng thời gian đã chạy (seconds)
+  isCompleted: boolean; // Đã hoàn thành task chưa
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -53,7 +65,7 @@ export interface Task {
   order: number;
   recurring: RecurringConfig;
   recurringLabel?: string;
-  timerSessions?: { start: number; end: number; elapsed: number }[];
+  timerSessions?: TimerSession[];
   notes?: string;
   // Subtasks / hierarchy
   parentId?: string;
@@ -104,6 +116,7 @@ export interface TimerState {
   startTime: number | null;
   pausedAt: number | null;
   totalPausedDuration: number;
+  sessionId?: string; // Current session ID for tracking
   // Pomodoro
   pomodoroSession: number; // current session number
   pomodoroPhase: 'work' | 'break' | 'longBreak' | 'none';

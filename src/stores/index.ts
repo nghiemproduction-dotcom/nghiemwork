@@ -4,7 +4,7 @@ import type {
   EisenhowerQuadrant, RecurringConfig, UserProfile,
   GamificationState, NotificationSettings, Reward,
   TaskTemplate, MediaBlock, TaskFinance, Achievement,
-  PomodoroSettings, DailyHealthEntry,
+  PomodoroSettings, DailyHealthEntry, TimerSession
 } from '@/types';
 import { calculateLevel, checkAchievement, getDefaultGamificationState } from '@/lib/gamification';
 import { getNowInTimezone } from '@/lib/notifications';
@@ -367,15 +367,34 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const timer = get().timer;
     const timerElapsed = timer.taskId === id ? timer.elapsed : 0;
     const finalDuration = duration || timerElapsed || 0;
+    const completedTime = Date.now();
 
-    const updated = get().tasks.map(t =>
-      t.id === id ? {
-        ...t,
-        status: 'done' as const,
-        completedAt: Date.now(),
-        duration: (t.duration || 0) + finalDuration,
-      } : t
-    );
+    const updated = get().tasks.map(t => {
+      if (t.id === id) {
+        // Mark current session as completed
+        const updatedSessions = t.timerSessions?.map(session => {
+          if (session.id === timer.sessionId && !session.isCompleted) {
+            return {
+              ...session,
+              completedAt: completedTime,
+              isCompleted: true,
+              elapsed: finalDuration
+            };
+          }
+          return session;
+        });
+
+        return {
+          ...t,
+          status: 'done' as const,
+          completedAt: completedTime,
+          duration: (t.duration || 0) + finalDuration,
+          timerSessions: updatedSessions
+        };
+      }
+      return t;
+    });
+    
     const key = getUserKey('nw_tasks', get()._userId);
     saveToStorage(key, updated);
 
@@ -471,46 +490,151 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const key = getUserKey('nw_tasks', get()._userId);
     saveToStorage(key, updated);
     
-    const newTimer: TimerState = {
-      taskId, isRunning: true, isPaused: false, elapsed: 0,
-      startTime: Date.now(), pausedAt: null, totalPausedDuration: 0,
-      pomodoroSession: pomodoroSettings.enabled ? 1 : 0,
-      pomodoroPhase: pomodoroSettings.enabled ? 'work' : 'none',
+    // Create new timer session
+    const sessionId = generateId();
+    const newSession: TimerSession = {
+      id: sessionId,
+      taskId,
+      startTime: Date.now(),
+      pauseTimes: [],
+      resumeTimes: [],
+      elapsed: 0,
+      isCompleted: false,
     };
     
+    const newTimer: TimerState = {
+      taskId, 
+      isRunning: true, 
+      isPaused: false, 
+      elapsed: 0,
+      startTime: Date.now(), 
+      pausedAt: null, 
+      totalPausedDuration: 0,
+      pomodoroSession: pomodoroSettings.enabled ? 1 : 0,
+      pomodoroPhase: pomodoroSettings.enabled ? 'work' : 'none',
+      sessionId, // Track current session
+    };
+    
+    // Add session to task
+    const taskWithSession = updated.map(t =>
+      t.id === taskId 
+        ? { ...t, timerSessions: [...(t.timerSessions || []), newSession] }
+        : t
+    );
+    
     set({
-      tasks: updated,
+      tasks: taskWithSession,
       timer: newTimer,
     });
     
     // Save timer state immediately
     saveTimerState(newTimer);
+    saveToStorage(key, taskWithSession);
   },
 
   pauseTimer: () => {
     const timer = get().timer;
-    if (timer.isRunning && !timer.isPaused) {
-      set({ timer: { ...timer, isPaused: true, isRunning: false, pausedAt: Date.now() } });
+    if (timer.isRunning && !timer.isPaused && timer.sessionId) {
+      const pauseTime = Date.now();
+      
+      // Update session with pause time
+      const updatedTasks = get().tasks.map(t => {
+        if (t.id === timer.taskId) {
+          const updatedSessions = t.timerSessions?.map(session => {
+            if (session.id === timer.sessionId) {
+              return {
+                ...session,
+                pauseTimes: [...session.pauseTimes, pauseTime],
+                elapsed: timer.elapsed
+              };
+            }
+            return session;
+          });
+          return { ...t, timerSessions: updatedSessions };
+        }
+        return t;
+      });
+      
+      const key = getUserKey('nw_tasks', get()._userId);
+      saveToStorage(key, updatedTasks);
+      
+      set({ 
+        timer: { ...timer, isPaused: true, isRunning: false, pausedAt: pauseTime },
+        tasks: updatedTasks
+      });
     }
   },
 
   resumeTimer: () => {
     const timer = get().timer;
-    if (timer.isPaused && timer.pausedAt) {
-      const pausedDuration = Math.floor((Date.now() - timer.pausedAt) / 1000);
-      set({ timer: { ...timer, isPaused: false, isRunning: true, pausedAt: null, totalPausedDuration: timer.totalPausedDuration + pausedDuration } });
+    if (timer.isPaused && timer.pausedAt && timer.sessionId) {
+      const resumeTime = Date.now();
+      const pausedDuration = Math.floor((resumeTime - timer.pausedAt) / 1000);
+      
+      // Update session with resume time
+      const updatedTasks = get().tasks.map(t => {
+        if (t.id === timer.taskId) {
+          const updatedSessions = t.timerSessions?.map(session => {
+            if (session.id === timer.sessionId) {
+              return {
+                ...session,
+                resumeTimes: [...session.resumeTimes, resumeTime],
+                elapsed: timer.elapsed
+              };
+            }
+            return session;
+          });
+          return { ...t, timerSessions: updatedSessions };
+        }
+        return t;
+      });
+      
+      const key = getUserKey('nw_tasks', get()._userId);
+      saveToStorage(key, updatedTasks);
+      
+      set({ 
+        timer: { 
+          ...timer, 
+          isPaused: false, 
+          isRunning: true, 
+          pausedAt: null, 
+          totalPausedDuration: timer.totalPausedDuration + pausedDuration 
+        },
+        tasks: updatedTasks
+      });
     }
   },
 
   stopTimer: () => {
     const timer = get().timer;
     if (timer.taskId) {
-      const updated = get().tasks.map(t =>
-        t.id === timer.taskId && t.status === 'in_progress' ? { ...t, status: 'pending' as const } : t
-      );
+      const stopTime = Date.now();
+      
+      // Update session with end time
+      const updatedTasks = get().tasks.map(t => {
+        if (t.id === timer.taskId) {
+          const updatedSessions = t.timerSessions?.map(session => {
+            if (session.id === timer.sessionId) {
+              return {
+                ...session,
+                endTime: stopTime,
+                elapsed: timer.elapsed
+              };
+            }
+            return session;
+          });
+          return { 
+            ...t, 
+            status: 'pending' as const,
+            timerSessions: updatedSessions
+          };
+        }
+        return t;
+      });
+      
       const key = getUserKey('nw_tasks', get()._userId);
-      saveToStorage(key, updated);
-      set({ tasks: updated, timer: { ...defaultTimer } });
+      saveToStorage(key, updatedTasks);
+      set({ tasks: updatedTasks, timer: { ...defaultTimer } });
       clearTimerState();
     } else {
       set({ timer: { ...defaultTimer } });
