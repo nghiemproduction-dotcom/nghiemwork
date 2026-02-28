@@ -1,0 +1,4 @@
+project_id = "dbypypuxhyoqkbexkjit"
+
+[functions.cyberfit-ai]
+verify_jwt = false

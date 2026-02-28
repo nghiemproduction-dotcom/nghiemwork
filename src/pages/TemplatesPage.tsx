@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSettingsStore, useTemplateStore } from '@/stores';
 import { convertYoutubeUrl, isYoutubeUrl } from '@/lib/youtubeUtils';
+import { toast } from 'sonner';
 import { 
   Plus, Trash2, Edit3, X, Save, ListTree, Image, Youtube, Type, DollarSign, ArrowRight, ChevronUp, ChevronDown,
   Sparkles, Wand2, Zap, Target, Calendar, Clock, Tag, Award, Coins, FileText, Link, Trash, GripVertical,
@@ -35,10 +36,25 @@ function TopicSelector({ value, onChange, placeholder }: { value: string; onChan
 
   const handleCreateNew = () => {
     if (newTopicName.trim()) {
+      // Create a new empty template with the new topic
+      const { addTemplate } = useTemplateStore.getState();
+      const newTemplate = {
+        title: `Template cho ${newTopicName.trim()}`,
+        quadrant: 'do_first' as const,
+        recurring: { type: 'none' as const },
+        topic: newTopicName.trim(),
+      };
+      
+      addTemplate(newTemplate);
+      
+      // Select the new topic
       onChange(newTopicName.trim());
       setNewTopicName('');
       setShowCreateNew(false);
       setIsOpen(false);
+      
+      // Show success message
+      toast.success(`Đã tạo chủ đề mới: ${newTopicName.trim()}`);
     }
   };
 

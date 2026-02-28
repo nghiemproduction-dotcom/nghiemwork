@@ -200,6 +200,46 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Base font scaling for all devices */
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
+/* Force all text elements to respect font scale */
+.text-xs { font-size: calc(12px * var(--font-scale)) !important; }
+.text-sm { font-size: calc(14px * var(--font-scale)) !important; }
+.text-base { font-size: calc(16px * var(--font-scale)) !important; }
+.text-lg { font-size: calc(18px * var(--font-scale)) !important; }
+.text-xl { font-size: calc(20px * var(--font-scale)) !important; }
+.text-2xl { font-size: calc(24px * var(--font-scale)) !important; }
+.text-3xl { font-size: calc(30px * var(--font-scale)) !important; }
+.text-4xl { font-size: calc(36px * var(--font-scale)) !important; }
+.text-5xl { font-size: calc(48px * var(--font-scale)) !important; }
+.text-6xl { font-size: calc(60px * var(--font-scale)) !important; }
+
+/* Common UI elements */
+h1, h2, h3, h4, h5, h6 {
+  font-size: calc(var(--font-size, 16px) * var(--font-scale)) !important;
+}
+
+p, span, div, button, input, textarea, select {
+  font-size: calc(var(--font-size, 16px) * var(--font-scale)) !important;
+}
+
+/* Specific component overrides */
+[class*="text-"] {
+  font-size: calc(1em * var(--font-scale)) !important;
+}
+
+/* Force font scaling on all elements */
+* {
+  font-size: inherit !important;
+}
+
+html, body {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
 /* Large phones (e.g. Samsung S22 Ultra): nền tảng lớn hơn, cap 36px cho cỡ Cực lớn */
 @media screen and (min-width: 360px) and (max-width: 480px) {
   html {
@@ -222,11 +262,19 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* YouTube iframe fullscreen fix */
-iframe[src*="youtube.com"] {
+iframe[src*="youtube.com"],
+iframe[src*="youtu.be"],
+iframe[data-src*="youtube.com"],
+iframe[data-src*="youtu.be"] {
   max-width: 100%;
   width: 100%;
   height: 100%;
   border: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* Fullscreen video container */
@@ -237,6 +285,11 @@ iframe[src*="youtube.com"] {
   height: 100vh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+  background: black !important;
 }
 
 /* Allow iframe to fill fullscreen */
@@ -245,4 +298,23 @@ iframe[src*="youtube.com"] {
 .aspect-video:-moz-full-screen iframe {
   width: 100% !important;
   height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Force landscape mode containers to use full width */
+@media screen and (orientation: landscape) {
+  .max-w-md, .max-w-lg, .max-w-xl, .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl, .max-w-6xl, .max-w-7xl {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+  
+  /* Modal containers in landscape */
+  .modal, .dialog, [role="dialog"] {
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+  }
 }

@@ -1,11 +1,12 @@
 import { useSettingsStore, useTaskStore } from '@/stores';
-import { CheckSquare, BarChart3, Sparkles, Settings, Trophy, FileText, DollarSign, CalendarDays } from 'lucide-react';
+import { CheckSquare, BarChart3, Sparkles, Settings, Trophy, FileText, DollarSign, CalendarDays, Heart } from 'lucide-react';
 import type { PageType } from '@/types';
 
 const NAV_ITEMS: { page: PageType; icon: typeof CheckSquare; label: string }[] = [
   { page: 'tasks', icon: CheckSquare, label: 'Việc' },
   { page: 'templates', icon: FileText, label: 'Mẫu' },
   { page: 'stats', icon: BarChart3, label: 'Thống kê' },
+  { page: 'health', icon: Heart, label: 'Sức khỏe' },
   { page: 'ai', icon: Sparkles, label: 'Lucy' },
   { page: 'achievements', icon: Trophy, label: 'Thành tích' },
   { page: 'settings', icon: Settings, label: 'Cài đặt' },

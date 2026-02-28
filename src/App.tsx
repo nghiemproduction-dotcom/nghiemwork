@@ -12,6 +12,7 @@ import AIPage from '@/pages/AIPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AuthPage from '@/pages/AuthPage';
 import TemplatesPage from '@/pages/TemplatesPage';
+import HealthTrackingPage from '@/pages/HealthTrackingPage';
 
 const StatsPage = lazy(() => import('@/pages/StatsPage'));
 const AchievementsPage = lazy(() => import('@/pages/AchievementsPage'));
@@ -72,6 +73,7 @@ export default function App() {
       }
     };
     
+    // Initial lock on app load
     lockOrientation();
     
     // Re-apply on orientation change
@@ -242,6 +244,7 @@ export default function App() {
       case 'ai': return <AIPage />;
       case 'settings': return <SettingsPage />;
       case 'templates': return <TemplatesPage />;
+      case 'health': return <HealthTrackingPage />;
       default: return <TasksPage />;
     }
   };
