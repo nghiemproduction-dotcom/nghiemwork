@@ -12,7 +12,8 @@ import AIPage from '@/pages/AIPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AuthPage from '@/pages/AuthPage';
 import TemplatesPage from '@/pages/TemplatesPage';
-import HealthTrackingPage from '@/pages/HealthTrackingPage';
+import KnowledgePage from '@/pages/KnowledgePage';
+import HealthStatsPage from '@/pages/HealthStatsPage';
 
 const StatsPage = lazy(() => import('@/pages/StatsPage'));
 const AchievementsPage = lazy(() => import('@/pages/AchievementsPage'));
@@ -239,12 +240,12 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'tasks': return <TasksPage />;
-      case 'stats': return <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-[var(--text-muted)] text-sm">Đang tải...</div></div>}><StatsPage /></Suspense>;
+      case 'stats': return <HealthStatsPage />;
       case 'achievements': return <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-[var(--text-muted)] text-sm">Đang tải...</div></div>}><AchievementsPage /></Suspense>;
       case 'ai': return <AIPage />;
       case 'settings': return <SettingsPage />;
       case 'templates': return <TemplatesPage />;
-      case 'health': return <HealthTrackingPage />;
+      case 'health': return <KnowledgePage />;
       default: return <TasksPage />;
     }
   };

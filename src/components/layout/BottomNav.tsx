@@ -6,7 +6,7 @@ const NAV_ITEMS: { page: PageType; icon: typeof CheckSquare; label: string }[] =
   { page: 'tasks', icon: CheckSquare, label: 'Việc' },
   { page: 'templates', icon: FileText, label: 'Mẫu' },
   { page: 'stats', icon: BarChart3, label: 'Thống kê' },
-  { page: 'health', icon: Heart, label: 'Sức khỏe' },
+  { page: 'health', icon: Heart, label: 'Kiến thức' },
   { page: 'ai', icon: Sparkles, label: 'Lucy' },
   { page: 'achievements', icon: Trophy, label: 'Thành tích' },
   { page: 'settings', icon: Settings, label: 'Cài đặt' },

@@ -12,7 +12,7 @@ import {
   TrendingUp, Clock, Award, BarChart3, Target, Flame, Share2, Check, 
   Calendar, Zap, Activity, PieChart as PieIcon,
   Timer, CheckCircle2, AlertTriangle, TrendingDown, Sparkles, Brain, Crown,
-  Lightbulb, ArrowUpRight, Clock3, Trophy
+  Lightbulb, ArrowUpRight, Clock3, Trophy, Heart, Droplets, Weight, Ruler
 } from 'lucide-react';
 import type { Task, EisenhowerQuadrant } from '@/types';
 import { QUADRANT_LABELS } from '@/types';

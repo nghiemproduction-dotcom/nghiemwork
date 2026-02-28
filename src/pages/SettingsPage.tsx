@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
-  Smartphone, Moon, Battery, Home,
+  Smartphone, Moon, Battery, Home, Target, Activity, Brain, Sparkles,
 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -70,6 +70,65 @@ export default function SettingsPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [installChecked, setInstallChecked] = useState(false);
+
+  // Weight loss planning state
+  const [showWeightPlanning, setShowWeightPlanning] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [profile, setProfile] = useState({
+    name: user?.username || '',
+    age: 30,
+    gender: 'male' as 'male' | 'female',
+    height: 170,
+    weight: 70,
+    waist: 80,
+    targetWeight: 65,
+    targetWaist: 75,
+    targetCalories: 2000,
+    targetWater: 2000,
+    injuries: '',
+    habits: '',
+    guiltyPleasures: '',
+    ifMode: 'none',
+    ifEatStart: '12:00',
+    ifEatEnd: '20:00',
+    sessions: [],
+  });
+
+  const updateField = (field: string, value: any) => {
+    setProfile(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAiAnalysis = async () => {
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cyberfit-ai`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            type: 'plan',
+            userData: profile,
+            messages: [{ role: 'user', content: 'Phân tích và lập kế hoạch tập luyện + dinh dưỡng cho tôi dựa trên thông tin cơ thể đã cung cấp.' }],
+          }),
+        }
+      );
+      if (!resp.ok) throw new Error('AI request failed');
+      const data = await resp.json();
+      setAiResult(data);
+      toast.success('Đã phân tích và tạo kế hoạch thành công!');
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      toast.error('Không thể kết nối với AI. Vui lòng thử lại.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Check if already installed
@@ -403,6 +462,218 @@ export default function SettingsPage() {
           <button onClick={() => setFontScale(Math.min(2, Math.round((fontScale + 0.05) * 100) / 100))}
             className="size-10 rounded-lg bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)]"><PlusIcon size={16} /></button>
         </div>
+      </div>
+
+      {/* Weight Loss Planning */}
+      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center gap-2.5 mb-3">
+          <Target size={18} className="text-[var(--accent-primary)]" />
+          <span className="text-sm font-medium text-[var(--text-primary)]">Kế hoạch giảm cân</span>
+        </div>
+        <button onClick={() => setShowWeightPlanning(!showWeightPlanning)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium text-[var(--accent-primary)] bg-[var(--accent-dim)] border border-[var(--border-accent)] active:opacity-70 min-h-[44px]">
+          <Brain size={16} />
+          {showWeightPlanning ? 'Ẩn' : 'Hiện'} phân tích & lập kế hoạch
+        </button>
+        
+        {showWeightPlanning && (
+          <div className="mt-4 space-y-4 animate-slide-up">
+            {/* Basic Info */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Tên</label>
+                <input
+                  type="text"
+                  value={profile.name}
+                  onChange={e => updateField('name', e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Tuổi</label>
+                <input
+                  type="number"
+                  value={profile.age}
+                  onChange={e => updateField('age', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Giới tính</label>
+                <select
+                  value={profile.gender}
+                  onChange={e => updateField('gender', e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] border border-[var(--border-subtle)]"
+                >
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Chiều cao (cm)</label>
+                <input
+                  type="number"
+                  value={profile.height}
+                  onChange={e => updateField('height', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Cân nặng (kg)</label>
+                <input
+                  type="number"
+                  value={profile.weight}
+                  onChange={e => updateField('weight', parseFloat(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Vòng bụng (cm)</label>
+                <input
+                  type="number"
+                  value={profile.waist}
+                  onChange={e => updateField('waist', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+            </div>
+
+            {/* Goals */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Cân nặng mục tiêu (kg)</label>
+                <input
+                  type="number"
+                  value={profile.targetWeight}
+                  onChange={e => updateField('targetWeight', parseFloat(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Vòng bụng mục tiêu (cm)</label>
+                <input
+                  type="number"
+                  value={profile.targetWaist}
+                  onChange={e => updateField('targetWaist', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Calo mục tiêu/ngày</label>
+              <input
+                type="number"
+                value={profile.targetCalories}
+                onChange={e => updateField('targetCalories', parseInt(e.target.value))}
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+              />
+            </div>
+            
+            <div>
+              <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Nước mục tiêu (ml)/ngày</label>
+              <input
+                type="number"
+                value={profile.targetWater}
+                onChange={e => updateField('targetWater', parseInt(e.target.value))}
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)]"
+              />
+            </div>
+
+            {/* Additional Info */}
+            <div>
+              <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Chấn thương / Bệnh lý</label>
+              <textarea
+                value={profile.injuries}
+                onChange={e => updateField('injuries', e.target.value)}
+                placeholder="Mô tả các vấn đề sức khỏe..."
+                rows={2}
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)] resize-none"
+              />
+            </div>
+            
+            <div>
+              <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Thói quen ăn uống</label>
+              <textarea
+                value={profile.habits}
+                onChange={e => updateField('habits', e.target.value)}
+                placeholder="Mô tả thói quen ăn uống hiện tại..."
+                rows={2}
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)] resize-none"
+              />
+            </div>
+            
+            <div>
+              <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Thức ăn vặt không thể từ bỏ</label>
+              <textarea
+                value={profile.guiltyPleasures}
+                onChange={e => updateField('guiltyPleasures', e.target.value)}
+                placeholder="Những món ăn vặt bạn thích..."
+                rows={2}
+                className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none border border-[var(--border-subtle)] resize-none"
+              />
+            </div>
+
+            {/* AI Analysis Button */}
+            <button
+              onClick={handleAiAnalysis}
+              disabled={aiLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[var(--bg-base)] bg-[var(--accent-primary)] disabled:opacity-40 active:opacity-80 min-h-[44px] transition-all"
+            >
+              {aiLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Đang phân tích...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} />
+                  SUPER AI - PHÂN TÍCH & LẬP KẾ HOẠCH
+                </>
+              )}
+            </button>
+
+            {/* AI Results */}
+            {aiResult && (
+              <div className="mt-4 p-4 bg-[var(--accent-dim)] rounded-xl border border-[var(--border-accent)]">
+                <h4 className="text-sm font-semibold text-[var(--accent-primary)] mb-2">Kết quả phân tích AI</h4>
+                <div className="space-y-2">
+                  {aiResult.estimatedTime && (
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      <strong>Thời gian dự kiến:</strong> {aiResult.estimatedTime}
+                    </p>
+                  )}
+                  {aiResult.issues && aiResult.issues.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)] mb-1">Các vấn đề cần lưu ý:</p>
+                      <ul className="text-xs text-[var(--text-secondary)] space-y-1">
+                        {aiResult.issues.map((issue: string, index: number) => (
+                          <li key={index}>• {issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {aiResult.recommendations && aiResult.recommendations.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)] mb-1">Khuyến nghị:</p>
+                      <ul className="text-xs text-[var(--text-secondary)] space-y-1">
+                        {aiResult.recommendations.map((rec: string, index: number) => (
+                          <li key={index}>• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Sound */}

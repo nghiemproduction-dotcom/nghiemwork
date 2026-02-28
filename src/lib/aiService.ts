@@ -39,6 +39,11 @@ export interface AIAction {
   xpCost?: number;
   xpReward?: number;
   media?: { type: 'youtube' | 'image' | 'text'; content: string }[];
+  // Health-related fields
+  weight?: string;
+  waist?: string;
+  water?: string;
+  calories?: string;
 }
 
 export function parseAIResponse(content: string): { text: string; actions: AIAction[] } {

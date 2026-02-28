@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useChatStore, useTaskStore, useSettingsStore, useGamificationStore, useTemplateStore } from '@/stores';
+import { useChatStore, useTaskStore, useSettingsStore, useGamificationStore, useTemplateStore, useHealthStore } from '@/stores';
 import { streamAIChat, parseAIResponse, type AIAction } from '@/lib/aiService';
 import { toast } from 'sonner';
 import { Send, Bot, User, Trash2, Sparkles, Zap, Mic, MicOff } from 'lucide-react';
@@ -12,6 +12,7 @@ function ActionBadge({ action, result }: { action: AIAction; result: string }) {
     START_TIMER: '⏱️', NAVIGATE: '📍', ADD_TEMPLATE: '📋', USE_TEMPLATE: '📄',
     ADD_REWARD: '🎁', REMOVE_REWARD: '🗑️', UPDATE_REWARD: '✏️',
     ADD_ACHIEVEMENT: '🏆', REMOVE_ACHIEVEMENT: '🗑️', UPDATE_ACHIEVEMENT: '✏️', UNLOCK_ACHIEVEMENT: '🔓',
+    ADD_HEALTH_ENTRY: '💪', UPDATE_HEALTH_GOAL: '🎯', ANALYZE_HEALTH: '📊',
   };
   const isError = result.startsWith('⚠️');
   return (
@@ -37,6 +38,7 @@ export default function AIPage() {
   const createTaskFromTemplate = useTemplateStore(s => s.createTaskFromTemplate);
   const gamState = useGamificationStore(s => s.state);
   const { addCustomReward, removeReward, updateReward, addCustomAchievement, removeAchievement, updateAchievement, unlockAchievement } = useGamificationStore();
+  const { addEntry, updateEntry, getLatestValues } = useHealthStore();
 
   const [input, setInput] = useState('');
   const [streamingContent, setStreamingContent] = useState('');
@@ -206,10 +208,32 @@ export default function AIPage() {
         if (a) { unlockAchievement(a.id); return `Đã mở khóa thành tích "${a.title}" (+${a.xpReward} XP)`; }
         return `⚠️ Không tìm thấy thành tích chưa đạt "${action.search}"`;
       }
+      case 'ADD_HEALTH_ENTRY': {
+        const today = new Date().toISOString().split('T')[0];
+        const entry = {
+          date: today,
+          weight: action.weight ? parseFloat(action.weight) : undefined,
+          waist: action.waist ? parseInt(action.waist) : undefined,
+          water: action.water ? parseInt(action.water) : 0,
+          calories: action.calories ? parseInt(action.calories) : 0,
+          notes: action.notes
+        };
+        addEntry(entry);
+        return `Đã thêm dữ liệu sức khỏe cho hôm nay`;
+      }
+      case 'UPDATE_HEALTH_GOAL': {
+        // This would update user's health goals in settings
+        setCurrentPage('settings');
+        return `Đã chuyển đến trang Cài đặt để cập nhật mục tiêu sức khỏe`;
+      }
+      case 'ANALYZE_HEALTH': {
+        setCurrentPage('stats');
+        return `Đã chuyển đến trang Thống kê để xem phân tích sức khỏe`;
+      }
       default:
         return '⚠️ Lệnh không được hỗ trợ';
     }
-  }, [tasks, timer, templates, gamState, addTask, completeTask, removeTask, restoreTask, startTimer, setCurrentPage, addTemplate, createTaskFromTemplate, addCustomReward, removeReward, updateReward, addCustomAchievement, removeAchievement, updateAchievement, unlockAchievement]);
+  }, [tasks, timer, templates, gamState, addTask, completeTask, removeTask, restoreTask, startTimer, setCurrentPage, addTemplate, createTaskFromTemplate, addCustomReward, removeReward, updateReward, addCustomAchievement, removeAchievement, updateAchievement, unlockAchievement, addEntry]);
 
   const handleSend = async () => {
     const trimmed = input.trim();

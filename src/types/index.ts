@@ -291,6 +291,7 @@ export interface TaskTemplate {
   topic?: string;
   healthMetrics?: EnhancedHealthMetrics;
   exerciseIds?: string[]; // IDs of exercises from health tracking
+  knowledgeId?: string; // ID of knowledge article
 }
 
 export interface TimerState {
@@ -430,6 +431,7 @@ export interface DailyHealthEntry {
   bloodPressure?: { systolic: number; diastolic: number };
   mood?: number;
   energy?: number;
+  notes?: string; // User notes for the day
   // Source task info
   taskId?: string;
   taskTitle?: string;
