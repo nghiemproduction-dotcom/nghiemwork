@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
-  Smartphone, Moon, Battery, Home,
+  Smartphone, Moon, Battery, Home, RefreshCw,
 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -57,6 +57,8 @@ export default function SettingsPage() {
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   // Change password state
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -93,7 +95,8 @@ export default function SettingsPage() {
     
     // Check if already has prompt available (for browsers that support it)
     if ('getInstalledRelatedApps' in navigator) {
-      (navigator as any).getInstalledRelatedApps().then((apps: any[]) => {
+      const nav = navigator as Navigator & { getInstalledRelatedApps(): Promise<unknown[]> };
+      nav.getInstalledRelatedApps().then((apps: unknown[]) => {
         if (apps.length === 0) {
           // App not installed, can show install
           setInstallChecked(true);
@@ -203,10 +206,33 @@ export default function SettingsPage() {
       setChangePwMsg('Đổi mật khẩu thành công!');
       setNewPassword('');
       setTimeout(() => { setChangePwMsg(''); setShowChangePassword(false); }, 2000);
-    } catch (err: any) {
-      setChangePwMsg(err.message);
+    } catch (err: unknown) {
+      setChangePwMsg(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
     }
     setChangePwLoading(false);
+  };
+
+  const checkForUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      // Simulate version check - in real app, this would check against an API
+      const currentVersion = '1.0.0';
+      const latestVersion = '1.0.1'; // Simulate newer version
+      
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      
+      // Simple version comparison - in real app use semver library
+      if (latestVersion > currentVersion) {
+        setUpdateAvailable(true);
+        toast.success('Phát hiện phiên bản mới!');
+      } else {
+        toast.info('Bạn đang dùng phiên bản mới nhất');
+      }
+    } catch (error) {
+      toast.error('Không thể kiểm tra phiên bản mới');
+    } finally {
+      setCheckingUpdate(false);
+    }
   };
 
   const notifGranted = canSendNotification();
@@ -492,6 +518,45 @@ export default function SettingsPage() {
           </button>
         </div>
       )}
+
+      {/* Check for Updates */}
+      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center gap-2.5 mb-3">
+          <RefreshCw size={18} className="text-[var(--accent-primary)]" />
+          <div>
+            <span className="text-sm font-medium text-[var(--text-primary)] block">Kiểm tra cập nhật</span>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              {updateAvailable ? 'Có phiên bản mới!' : 'Bạn đang dùng phiên bản mới nhất'}
+            </span>
+          </div>
+        </div>
+        <button 
+          onClick={checkForUpdate}
+          disabled={checkingUpdate}
+          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-colors min-h-[44px] ${
+            checkingUpdate 
+              ? 'text-[var(--text-muted)] bg-[var(--bg-surface)]' 
+              : updateAvailable
+                ? 'text-[var(--bg-base)] bg-[var(--warning)] active:opacity-80'
+                : 'text-[var(--accent-primary)] bg-[var(--accent-dim)] border border-[var(--border-accent)] active:opacity-70'
+          }`}
+        >
+          {checkingUpdate ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+              Đang kiểm tra...
+            </>
+          ) : updateAvailable ? (
+            <>
+              <RefreshCw size={16} /> Cập nhật ngay
+            </>
+          ) : (
+            <>
+              <RefreshCw size={16} /> Kiểm tra phiên bản
+            </>
+          )}
+        </button>
+      </div>
 
       {/* App Version */}
       <div className="text-center py-4">

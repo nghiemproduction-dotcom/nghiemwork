@@ -4,7 +4,7 @@ import { streamAIChat, parseAIResponse, type AIAction } from '@/lib/aiService';
 import { toast } from 'sonner';
 import { Send, Bot, User, Trash2, Sparkles, Zap, Mic, MicOff } from 'lucide-react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
-import type { EisenhowerQuadrant } from '@/types';
+import type { EisenhowerQuadrant, Reward, Achievement } from '@/types';
 
 function ActionBadge({ action, result }: { action: AIAction; result: string }) {
   const icons: Record<string, string> = {
@@ -84,7 +84,7 @@ export default function AIPage() {
         return `⚠️ Không tìm thấy "${action.search}"`;
       }
       case 'NAVIGATE': {
-        const p = action.page as any;
+        const p = action.page as 'tasks' | 'stats' | 'settings' | 'achievements' | 'templates';
         if (['tasks', 'stats', 'settings', 'achievements', 'templates'].includes(p)) {
           setCurrentPage(p);
           return `Đã chuyển trang ${p}`;
@@ -158,7 +158,7 @@ export default function AIPage() {
         const s = (action.search || '').toLowerCase();
         const r = gamState.rewards.find(r => r.title.toLowerCase().includes(s));
         if (r) {
-          const updates: any = {};
+          const updates: Partial<Pick<Reward, 'title' | 'xpCost' | 'description' | 'icon'>> = {};
           if (action.title) updates.title = action.title;
           if (action.xpCost) updates.xpCost = action.xpCost;
           if (action.description) updates.description = action.description;
@@ -190,7 +190,7 @@ export default function AIPage() {
         const s = (action.search || '').toLowerCase();
         const a = gamState.achievements.find(a => a.title.toLowerCase().includes(s));
         if (a) {
-          const updates: any = {};
+          const updates: Partial<Pick<Achievement, 'title' | 'xpReward' | 'description' | 'icon'>> = {};
           if (action.title) updates.title = action.title;
           if (action.xpReward) updates.xpReward = action.xpReward;
           if (action.description) updates.description = action.description;

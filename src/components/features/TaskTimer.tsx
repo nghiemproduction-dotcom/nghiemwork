@@ -10,7 +10,8 @@ import { Pause, Play, Square } from 'lucide-react';
 function requestWakeLock(): Promise<WakeLock | null> {
   try {
     if ('wakeLock' in navigator) {
-      return (navigator as any).wakeLock.request('screen');
+      const nav = navigator as Navigator & { wakeLock: { request(type: string): Promise<unknown> } };
+      return nav.wakeLock.request('screen').then((result): WakeLock | null => result as unknown as WakeLock);
     }
   } catch {
     return Promise.resolve(null);
@@ -21,7 +22,8 @@ function requestWakeLock(): Promise<WakeLock | null> {
 function releaseWakeLock(wakeLock: WakeLock | null): void {
   if (wakeLock) {
     try {
-      (wakeLock as any).release();
+      const wl = wakeLock as WakeLock & { release(): Promise<void> };
+      wl.release();
     } catch {
       // Ignore release errors
     }
@@ -136,7 +138,7 @@ export function TaskTimer() {
     });
 
     return () => stopTimerWorker();
-  }, [timer.isRunning, timer.isPaused, tickTimer, playTick, announceTime, speak]);
+  }, [timer.isRunning, timer.isPaused, timer.startTime, timer.elapsed, tickTimer, playTick, announceTime, speak]);
 
   // ═══════════════════════════════════════════════════════════════
   //  WAKE LOCK — prevent the screen from sleeping while timing

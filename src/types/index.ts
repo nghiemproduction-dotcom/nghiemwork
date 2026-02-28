@@ -181,7 +181,43 @@ export interface HealthMetrics {
   waist?: number; // in cm
   water?: number; // in ml
   calories?: number; // calories burned
+  sleepHours?: number; // hours of sleep
+  sleepQuality?: number; // 1-5 scale
+  steps?: number; // daily steps
+  heartRate?: number; // bpm
+  bloodPressure?: { systolic: number; diastolic: number };
+  mood?: number; // 1-5 mood rating
+  energy?: number; // 1-5 energy level
 }
+
+// AI-detected health data from task completion
+export interface TaskHealthData {
+  taskId: string;
+  taskTitle: string;
+  detectedMetrics: HealthMetricType[];
+  confidence: number; // 0-1
+  suggestedFields: {
+    field: keyof HealthMetrics;
+    label: string;
+    type: 'number' | 'range' | 'select';
+    unit?: string;
+    min?: number;
+    max?: number;
+    options?: string[];
+  }[];
+}
+
+export type HealthMetricType = 
+  | 'sleep' 
+  | 'exercise' 
+  | 'nutrition' 
+  | 'hydration' 
+  | 'weight' 
+  | 'mood' 
+  | 'energy' 
+  | 'heart_health'
+  | 'stress'
+  | 'productivity';
 
 export interface DailyHealthEntry {
   date: string; // YYYY-MM-DD format
@@ -189,9 +225,17 @@ export interface DailyHealthEntry {
   waist?: number;
   water?: number;
   calories?: number;
+  sleepHours?: number;
+  sleepQuality?: number;
+  steps?: number;
+  heartRate?: number;
+  bloodPressure?: { systolic: number; diastolic: number };
+  mood?: number;
+  energy?: number;
   // Source task info
   taskId?: string;
   taskTitle?: string;
+  category?: HealthMetricType;
 }
 export interface NotificationSettings {
   enabled: boolean;

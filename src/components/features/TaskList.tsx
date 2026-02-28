@@ -4,14 +4,16 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { formatTimeRemaining, formatDeadlineDisplay } from '@/lib/notifications';
 import { TaskViewModal } from '@/components/features/TaskViewModal';
 import { TaskEditModal } from '@/components/features/TaskEditModal';
+import { HealthDataModal } from '@/components/features/HealthDataModal';
 import { SwipeableTaskItem } from '@/components/features/SwipeableTaskItem';
 import {
   Play, CheckCircle2, GripVertical, RotateCcw, Trash2, Undo2,
   Clock, Calendar, AlertTriangle, ChevronDown, ChevronRight,
   DollarSign, ListTree, Link2, Lock, Search, X, Tag,
 } from 'lucide-react';
-import type { Task, TabType, EisenhowerQuadrant } from '@/types';
+import type { Task, TabType, EisenhowerQuadrant, HealthMetrics } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
+import { shouldShowHealthPrompt } from '@/lib/healthDetection';
 
 import { getRecurringLabel } from '@/lib/recurrence';
 
@@ -69,6 +71,7 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
   const timezone = useSettingsStore(s => s.timezone);
   const templates = useTemplateStore(s => s.templates);
   const [expanded, setExpanded] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
 
   const isTimerActive = (timer.taskId === task.id) && (timer.isRunning || timer.isPaused);
   const qConfig = QUADRANT_LABELS[task.quadrant];
@@ -84,6 +87,21 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
 
   const deadlineInfo = task.deadline ? formatTimeRemaining(task.deadline, timezone) : null;
   const deadlineDisplay = task.deadline ? formatDeadlineDisplay(task.deadline, timezone) : null;
+
+  const handleCompleteTask = async () => {
+    // Check if we should show health prompt
+    if (shouldShowHealthPrompt(task.title)) {
+      setShowHealthModal(true);
+    } else {
+      completeTask(task.id);
+    }
+  };
+
+  const handleHealthDataSubmit = (healthData: Partial<HealthMetrics>) => {
+    // Store health data and then complete the task
+    completeTask(task.id);
+    setShowHealthModal(false);
+  };
 
   // Inner content component
   const taskContent = (
@@ -101,7 +119,7 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
           )}
 
           {tab === 'pending' && (
-            <button onClick={() => completeTask(task.id)}
+            <button onClick={handleCompleteTask}
               className="size-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 active:scale-90 mt-0.5"
               style={{ borderColor: qConfig.color }} aria-label="Hoàn thành" />
           )}
@@ -215,6 +233,15 @@ function TaskItem({ task, tab, onStartTimer, onView }: { task: Task; tab: TabTyp
   return (
     <div className="relative overflow-hidden rounded-xl mb-2">
       {taskContent}
+      {showHealthModal && (
+        <HealthDataModal
+          isOpen={showHealthModal}
+          onClose={() => setShowHealthModal(false)}
+          taskId={task.id}
+          taskTitle={task.title}
+          onComplete={handleHealthDataSubmit}
+        />
+      )}
     </div>
   );
 }

@@ -61,9 +61,11 @@ export default function App() {
       try {
         const settings = useSettingsStore.getState();
         if (settings.orientationLock) {
-          await (window.screen.orientation as any).lock('landscape');
+          const screenOrientation = window.screen.orientation as ScreenOrientation & { lock(type: string): Promise<void> };
+          await screenOrientation.lock('landscape');
         } else {
-          (window.screen.orientation as any).unlock();
+          const screenOrientation = window.screen.orientation as ScreenOrientation & { unlock(): void };
+          screenOrientation.unlock();
         }
       } catch {
         // Silent fail
