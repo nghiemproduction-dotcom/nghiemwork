@@ -1046,6 +1046,7 @@ interface SettingsStore {
   notificationSettings: NotificationSettings;
   pomodoroSettings: PomodoroSettings;
   orientationLock: boolean;
+  backgroundMode: boolean;
   setFontScale: (scale: number) => void;
   setTickSound: (enabled: boolean) => void;
   setVoiceEnabled: (enabled: boolean) => void;
@@ -1054,6 +1055,7 @@ interface SettingsStore {
   setNotificationSettings: (settings: Partial<NotificationSettings>) => void;
   setPomodoroSettings: (settings: Partial<PomodoroSettings>) => void;
   setOrientationLock: (enabled: boolean) => void;
+  setBackgroundMode: (enabled: boolean) => void;
 }
 
 const defaultNotificationSettings: NotificationSettings = {
@@ -1071,6 +1073,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   notificationSettings: loadFromStorage<NotificationSettings>('nw_notifications', defaultNotificationSettings),
   pomodoroSettings: loadFromStorage<PomodoroSettings>('nw_pomodoro', defaultPomodoroSettings),
   orientationLock: loadFromStorage<boolean>('nw_orientation_lock', false),
+  backgroundMode: loadFromStorage<boolean>('nw_background_mode', true),
   currentPage: 'tasks',
 
   setFontScale: (scale) => {
@@ -1098,6 +1101,10 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
       // API not supported
     }
     set({ orientationLock: enabled });
+  },
+  setBackgroundMode: (enabled) => { 
+    saveToStorage('nw_background_mode', enabled); 
+    set({ backgroundMode: enabled }); 
   },
   setNotificationSettings: (partial) => {
     set((prev) => {

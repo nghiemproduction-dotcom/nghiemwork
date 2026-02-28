@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   Type, Volume2, Mic, Trash2, AlertTriangle, Minus, Plus as PlusIcon,
   LogOut, User, Globe, Bell, Download, Upload, Lock, Timer, Eye, EyeOff,
-  Smartphone,
+  Smartphone, Moon, Battery,
 } from 'lucide-react';
 
 const TIMEZONES = [
@@ -134,6 +134,8 @@ export default function SettingsPage() {
   };
 
   const notifGranted = canSendNotification();
+  const backgroundMode = useSettingsStore(s => s.backgroundMode);
+  const setBackgroundMode = useSettingsStore(s => s.setBackgroundMode);
 
   return (
     <div className="flex flex-col h-full px-4 pt-4 pb-24 overflow-y-auto">
@@ -258,6 +260,26 @@ export default function SettingsPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Background Mode Settings */}
+      <div className="bg-[var(--bg-elevated)] rounded-xl p-4 border border-[var(--border-subtle)] mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <Moon size={18} className="text-[var(--accent-primary)]" />
+            <div>
+              <span className="text-sm font-medium text-[var(--text-primary)] block">Chạy dưới nền</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Timer tiếp tục chạy khi tắt màn hình</span>
+            </div>
+          </div>
+          <button onClick={() => setBackgroundMode(!backgroundMode)}
+            className={`w-12 h-7 rounded-full transition-colors relative ${backgroundMode ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-surface)]'}`}>
+            <div className={`size-5 rounded-full bg-white absolute top-1 transition-transform ${backgroundMode ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] mt-2">
+          💡 Bật để timer không bị dừng khi chuyển app khác hoặc tắt màn hình
+        </p>
       </div>
 
       {/* Orientation Lock */}
