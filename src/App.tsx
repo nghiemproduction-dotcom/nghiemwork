@@ -193,7 +193,7 @@ export default function App() {
       <Toaster theme="dark" position="top-center" richColors closeButton />
       <InstallPrompt />
       <TaskTimer />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4rem+env(safe-area-inset-bottom,0px))] landscape:w-full landscape:max-w-4xl landscape:mx-auto">{renderPage()}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 landscape:w-full landscape:max-w-4xl landscape:mx-auto">{renderPage()}</main>
       <BottomNav />
     </div>
   );

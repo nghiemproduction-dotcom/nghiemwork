@@ -520,19 +520,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   tickTimer: () => {
     const timer = get().timer;
-    if (timer.isRunning && timer.startTime && !timer.isPaused) {
-      const totalElapsed = Math.floor((Date.now() - timer.startTime) / 1000);
-      const elapsed = totalElapsed - timer.totalPausedDuration;
+    if (!timer.isRunning || timer.isPaused || !timer.startTime) return;
+    
+    // Calculate elapsed based on wall clock time minus paused duration
+    const now = Date.now();
+    const totalElapsed = Math.floor((now - timer.startTime) / 1000);
+    const elapsed = Math.max(0, totalElapsed - timer.totalPausedDuration);
+    
+    // Always update to ensure background/foreground sync
+    if (elapsed !== timer.elapsed) {
+      const newTimer = { ...timer, elapsed };
+      set({ timer: newTimer });
       
-      // Only update if elapsed changed
-      if (elapsed !== timer.elapsed) {
-        const newTimer = { ...timer, elapsed };
-        set({ timer: newTimer });
-        
-        // Save timer state every 30 seconds
-        if (elapsed > 0 && elapsed % 30 === 0) {
-          saveTimerState(newTimer);
-        }
+      // Save timer state every 10 seconds for accurate recovery
+      if (elapsed > 0 && elapsed % 10 === 0) {
+        saveTimerState(newTimer);
       }
     }
   },
