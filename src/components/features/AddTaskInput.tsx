@@ -9,25 +9,12 @@ import { QUADRANT_LABELS } from '@/types';
 
 const RECURRING_OPTIONS: { type: RecurringType; interval?: number; label: string }[] = [
   { type: 'none', label: 'Không lặp' },
-  { type: 'hourly', interval: 1, label: 'Hàng giờ' },
-  { type: 'hourly', interval: 2, label: 'Cách 2 giờ' },
-  { type: 'hourly', interval: 3, label: 'Cách 3 giờ' },
-  { type: 'hourly', interval: 6, label: 'Cách 6 giờ' },
-  { type: 'hourly', interval: 12, label: 'Cách 12 giờ' },
-  { type: 'daily', interval: 1, label: 'Hàng ngày' },
-  { type: 'daily', interval: 2, label: 'Cách 2 ngày' },
-  { type: 'daily', interval: 3, label: 'Cách 3 ngày' },
-  { type: 'daily', interval: 7, label: 'Cách 7 ngày' },
+  { type: 'hourly', label: 'Theo giờ' },
+  { type: 'daily', label: 'Hàng ngày' },
   { type: 'weekdays', label: 'T2–T6' },
-  { type: 'weekly', interval: 1, label: 'Hàng tuần' },
-  { type: 'weekly', interval: 2, label: 'Cách 2 tuần' },
-  { type: 'weekly', interval: 3, label: 'Cách 3 tuần' },
-  { type: 'weekly', interval: 4, label: 'Cách 4 tuần' },
-  { type: 'monthly', interval: 1, label: 'Hàng tháng' },
-  { type: 'monthly', interval: 2, label: 'Cách 2 tháng' },
-  { type: 'monthly', interval: 3, label: 'Cách 3 tháng' },
-  { type: 'monthly', interval: 6, label: 'Cách 6 tháng' },
-  { type: 'custom', label: 'Tùy chọn' },
+  { type: 'weekly', label: 'Hàng tuần' },
+  { type: 'monthly', label: 'Hàng tháng' },
+  { type: 'custom', label: 'Tùy chọn ngày' },
 ];
 
 const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -286,24 +273,39 @@ export function AddTaskInput() {
               <label className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mb-1.5">
                 <RotateCcw size={12} /> Lặp lại
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                {RECURRING_OPTIONS.map((opt, idx) => {
-                  const isSelected = recurringType === opt.type && (opt.interval == null || recurringInterval === opt.interval);
-                  return (
-                    <button
-                      key={opt.type + (opt.interval ?? '') + idx}
-                      onClick={() => { setRecurringType(opt.type); if (opt.interval != null) setRecurringInterval(opt.interval); }}
-                      className={`px-2.5 py-2 rounded-lg text-[10px] font-medium min-h-[34px] transition-colors ${
-                        isSelected
-                          ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]'
-                          : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-transparent'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
+                {RECURRING_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.type}
+                    onClick={() => setRecurringType(opt.type)}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-medium min-h-[34px] transition-colors ${
+                      recurringType === opt.type
+                        ? 'bg-[rgba(0,229,204,0.15)] text-[var(--accent-primary)] border border-[var(--border-accent)]'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-transparent'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
+              
+              {/* Interval input for hourly/daily/weekly/monthly */}
+              {(recurringType === 'hourly' || recurringType === 'daily' || recurringType === 'weekly' || recurringType === 'monthly') && (
+                <div className="flex items-center gap-2 animate-slide-up">
+                  <span className="text-xs text-[var(--text-muted)]">Cách</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={recurringInterval}
+                    onChange={(e) => setRecurringInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 bg-[var(--bg-surface)] rounded-lg px-2 py-1.5 text-sm text-center text-[var(--text-primary)] outline-none border border-[var(--border-subtle)] font-mono"
+                  />
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {recurringType === 'hourly' ? 'giờ' : recurringType === 'daily' ? 'ngày' : recurringType === 'weekly' ? 'tuần' : 'tháng'}
+                  </span>
+                </div>
+              )}
 
               {recurringType === 'custom' && (
                 <div className="flex gap-1.5 mt-2">

@@ -17,12 +17,12 @@ export function BottomNav() {
   const fontScale = useSettingsStore(s => s.fontScale);
   const overdueCount = useTaskStore(s => s.tasks.filter(t => t.status === 'overdue').length);
 
-  // Calculate scaled sizes based on font scale - larger base for big screens like S22 Ultra
-  const iconSize = Math.max(24, Math.round(22 * fontScale));
-  const minHeight = Math.max(72, Math.round(68 * fontScale));
-  const fontSize = Math.max(13, Math.round(12 * fontScale));
-  const badgeSize = Math.max(20, Math.round(20 * fontScale));
-  const badgeFontSize = Math.max(10, Math.round(9 * fontScale));
+  // Calculate scaled sizes based on font scale
+  const iconSize = Math.max(20, Math.round(20 * fontScale));
+  const minHeight = Math.max(60, Math.round(60 * fontScale));
+  const fontSize = Math.max(10, Math.round(10 * fontScale));
+  const badgeSize = Math.max(18, Math.round(16 * fontScale));
+  const badgeFontSize = Math.max(9, Math.round(8 * fontScale));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-[var(--border-subtle)] pb-[env(safe-area-inset-bottom)]">
