@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { TaskTimer } from '@/components/features/TaskTimer';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
+import { UpdatePrompt } from '@/components/features/UpdatePrompt';
 import TasksPage from '@/pages/TasksPage';
 import AIPage from '@/pages/AIPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -176,6 +177,30 @@ export default function App() {
     return () => window.removeEventListener('navigate-to-page', handleNavigate);
   }, []);
 
+  // Listen for service worker update messages
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type) {
+        if (event.data.type === 'UPDATE_AVAILABLE') {
+          // Dispatch custom event for UpdatePrompt
+          window.dispatchEvent(new CustomEvent('sw-update-available', {
+            detail: {
+              version: event.data.version,
+              message: event.data.message
+            }
+          }));
+        } else if (event.data.type === 'UPDATE_COMPLETED') {
+          window.dispatchEvent(new CustomEvent('sw-update-completed'));
+        }
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, []);
+
   if (!isSupabaseConfigured) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-base)] p-6">
@@ -223,6 +248,7 @@ export default function App() {
     <div className="min-h-[100dvh] w-full max-w-lg mx-auto flex flex-col bg-[var(--bg-base)] overflow-x-hidden pb-[env(safe-area-inset-bottom)] landscape:max-w-none landscape:w-full landscape:px-4">
       <Toaster theme="dark" position="top-center" richColors closeButton />
       <InstallPrompt />
+      <UpdatePrompt />
       <TaskTimer />
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 landscape:w-full landscape:max-w-4xl landscape:mx-auto">{renderPage()}</main>
       <BottomNav />
