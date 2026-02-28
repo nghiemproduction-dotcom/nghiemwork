@@ -52,6 +52,37 @@ export default function App() {
     }
   }, []);
 
+  // Fix auto-rotate with proper store access
+  useEffect(() => {
+    if (!('screen' in window && 'orientation' in window.screen)) return;
+    
+    const lockOrientation = async () => {
+      try {
+        const settings = useSettingsStore.getState();
+        if (settings.orientationLock) {
+          await (window.screen.orientation as any).lock('landscape');
+        } else {
+          (window.screen.orientation as any).unlock();
+        }
+      } catch {
+        // Silent fail
+      }
+    };
+    
+    lockOrientation();
+    
+    // Re-apply on orientation change
+    const handleOrientationChange = () => {
+      setTimeout(lockOrientation, 100);
+    };
+    
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, []);
+
   // Nếu thiếu cấu hình Supabase (VD: chưa set env trên Vercel), báo và dừng loading
   useEffect(() => {
     if (!isSupabaseConfigured) setLoading(false);
