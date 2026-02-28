@@ -288,10 +288,9 @@ export interface TaskTemplate {
   createdAt: number;
   updatedAt?: number;
   templateType?: 'single' | 'group';
-  // Topic categorization for grouping templates
   topic?: string;
-  // Health metrics for SỨC KHỎE topic
-  healthMetrics?: HealthMetrics;
+  healthMetrics?: EnhancedHealthMetrics;
+  exerciseIds?: string[]; // IDs of exercises from health tracking
 }
 
 export interface TimerState {

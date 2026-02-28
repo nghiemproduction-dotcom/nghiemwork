@@ -6,9 +6,11 @@ import {
   Plus, Trash2, Edit3, X, Save, ListTree, Image, Youtube, Type, DollarSign, ArrowRight, ChevronUp, ChevronDown,
   Sparkles, Wand2, Zap, Target, Calendar, Clock, Tag, Award, Coins, FileText, Link, Trash, GripVertical,
   CheckCircle2, AlertTriangle, Play, Pause, RotateCcw, FileEdit, Send, Bot, XCircle, Download, Upload,
+  Heart, Activity
 } from 'lucide-react';
 import type { TaskTemplate, EisenhowerQuadrant, MediaBlock, TaskFinance } from '@/types';
 import { QUADRANT_LABELS } from '@/types';
+import { exercises } from '@/data/healthData';
 
 function generateBlockId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -297,9 +299,10 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
   const [xpReward, setXpReward] = useState(template?.xpReward || 0);
   const [showXpInput, setShowXpInput] = useState(!!template?.xpReward);
   const [healthMetrics, setHealthMetrics] = useState(template?.healthMetrics || {});
+  const [showHealthMetrics, setShowHealthMetrics] = useState(!!template?.healthMetrics);
+  const [selectedExercises, setSelectedExercises] = useState<string[]>(template?.exerciseIds || []);
 
   const qConfig = QUADRANT_LABELS[quadrant];
-  // Health metrics removed as per user request - no longer show health stats for SỨC KHỎE topic
 
   const handleAddMedia = () => {
     const val = mediaInput.trim();
@@ -329,7 +332,8 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
       finance: showFinance ? finance : undefined,
       xpReward: showXpInput && xpReward > 0 ? xpReward : undefined,
       templateType: 'single',
-      healthMetrics: undefined, // Removed - no longer storing health metrics in templates
+      healthMetrics: showHealthMetrics ? healthMetrics : undefined,
+      exerciseIds: selectedExercises.length > 0 ? selectedExercises : undefined,
     });
   };
 
@@ -446,6 +450,64 @@ function SingleTemplateEditor({ template, onSave, onCancel }: {
               <Plus size={12} />
               Thêm
             </button>
+          </div>
+
+          {/* Exercise Selection */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={() => setShowHealthMetrics(!showHealthMetrics)}
+                className="flex items-center gap-2 px-3 py-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-xs font-medium"
+              >
+                <Activity size={14} />
+                {showHealthMetrics ? 'Ẩn' : 'Hiện'} bài tập
+              </button>
+            </div>
+
+            {showHealthMetrics && (
+              <div className="space-y-3 animate-slide-up">
+                <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+                  <h4 className="font-medium text-[var(--text-primary)] mb-2 flex items-center gap-2">
+                    <Heart size={16} />
+                    Chọn bài tập liên quan
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+                    {exercises.slice(0, 10).map(exercise => (
+                      <label
+                        key={exercise.id}
+                        className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedExercises.includes(exercise.id)}
+                          onChange={() => {
+                            if (selectedExercises.includes(exercise.id)) {
+                              setSelectedExercises(selectedExercises.filter(id => id !== exercise.id));
+                            } else {
+                              setSelectedExercises([...selectedExercises, exercise.id]);
+                            }
+                          }}
+                          className="rounded border-[var(--border-subtle)]"
+                        />
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-[var(--text-primary)]">{exercise.name}</p>
+                          <p className="text-[10px] text-[var(--text-muted)]">
+                            {exercise.duration} phút • {exercise.caloriesBurned} kcal
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedExercises.length > 0 && (
+                    <div className="mt-2 p-2 bg-[var(--accent-dim)] rounded-lg">
+                      <p className="text-xs text-[var(--accent-primary)]">
+                        Đã chọn {selectedExercises.length} bài tập
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Media List */}

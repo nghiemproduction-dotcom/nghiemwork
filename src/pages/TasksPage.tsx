@@ -1,7 +1,7 @@
 import { useTaskStore, useSettingsStore } from '@/stores';
 import { TaskList } from '@/components/features/TaskList';
 import { AddTaskInput } from '@/components/features/AddTaskInput';
-import { CalendarDays, Clock } from 'lucide-react';
+import { CalendarDays, Clock, Heart, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type {} from '@/types';
 import { getNowInTimezone } from '@/lib/notifications';
@@ -46,6 +46,32 @@ export default function TasksPage() {
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)]">
           <Clock size={14} className="text-[var(--accent-primary)]" />
           <span className="text-sm font-semibold text-[var(--accent-primary)] tabular-nums font-mono">{timeStr}</span>
+        </div>
+      </div>
+
+      {/* Health Tracking Quick Access */}
+      <div className="px-4 pb-4">
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
+            <Heart size={16} className="text-[var(--accent-primary)]" />
+            Sức khỏe nhanh
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => useSettingsStore.getState().setCurrentPage('health')}
+              className="flex items-center gap-2 p-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-xs font-medium hover:bg-[var(--accent-primary)] hover:text-[var(--bg-base)] transition-colors"
+            >
+              <Activity size={14} />
+              Bài tập
+            </button>
+            <button
+              onClick={() => useSettingsStore.getState().setCurrentPage('health')}
+              className="flex items-center gap-2 p-2 bg-[var(--bg-surface)] text-[var(--text-secondary)] rounded-lg text-xs font-medium hover:bg-[var(--border-subtle)] transition-colors"
+            >
+              <Heart size={14} />
+              Dinh dưỡng
+            </button>
+          </div>
         </div>
       </div>
 

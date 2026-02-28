@@ -193,10 +193,76 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }
 
-/* Ensure readable size on small phones */
-@media screen and (max-width: 420px) {
+/* Responsive breakpoints for consistent display */
+@media screen and (max-width: 360px) {
   html {
-    font-size: clamp(14px, calc(16px * var(--font-scale)), 32px);
+    font-size: clamp(14px, calc(15px * var(--font-scale)), 28px);
+  }
+  
+  /* Small phones */
+  .max-w-lg {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+  
+  /* Prevent overflow on small screens */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@media screen and (min-width: 361px) and (max-width: 420px) {
+  html {
+    font-size: clamp(15px, calc(16px * var(--font-scale)), 32px);
+  }
+  
+  /* Regular phones */
+  .max-w-lg {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+}
+
+@media screen and (min-width: 421px) and (max-width: 480px) {
+  html {
+    font-size: clamp(16px, calc(17px * var(--font-scale)), 34px);
+  }
+  
+  /* Large phones */
+  .max-w-lg {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+}
+
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  html {
+    font-size: clamp(17px, calc(18px * var(--font-scale)), 36px);
+  }
+  
+  /* Tablets */
+  .max-w-lg {
+    max-width: 95vw !important;
+    width: 95vw !important;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  html {
+    font-size: clamp(18px, calc(19px * var(--font-scale)), 38px);
+  }
+  
+  /* Desktop */
+  .max-w-lg {
+    max-width: 90vw !important;
+    width: 90vw !important;
+  }
+}
+
+/* Large phones (e.g. Samsung S22 Ultra): nền tảng lớn hơn, cap 36px cho cỡ Cực lớn */
+@media screen and (min-width: 360px) and (max-width: 480px) {
+  html {
+    font-size: clamp(16px, calc(17px * var(--font-scale)), 36px);
   }
 }
 
@@ -204,6 +270,34 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 html {
   font-size: calc(16px * var(--font-scale));
 }
+
+/* Vietnamese font stack with consistent weights */
+:root {
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Noto Sans CJK JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans TC", sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Consistent font weights */
+.font-light { font-weight: 300 !important; }
+.font-normal { font-weight: 400 !important; }
+.font-medium { font-weight: 500 !important; }
+.font-semibold { font-weight: 600 !important; }
+.font-bold { font-weight: 700 !important; }
+.font-extrabold { font-weight: 800 !important; }
+
+/* Consistent text styles */
+.italic { font-style: italic !important; }
+.not-italic { font-style: normal !important; }
+.underline { text-decoration: underline !important; }
+.line-through { text-decoration: line-through !important; }
 
 /* Force all text elements to respect font scale */
 .text-xs { font-size: calc(12px * var(--font-scale)) !important; }
@@ -217,13 +311,16 @@ html {
 .text-5xl { font-size: calc(48px * var(--font-scale)) !important; }
 .text-6xl { font-size: calc(60px * var(--font-scale)) !important; }
 
-/* Common UI elements */
+/* Common UI elements with consistent sizing */
 h1, h2, h3, h4, h5, h6 {
   font-size: calc(var(--font-size, 16px) * var(--font-scale)) !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
 }
 
 p, span, div, button, input, textarea, select {
   font-size: calc(var(--font-size, 16px) * var(--font-scale)) !important;
+  font-family: inherit !important;
 }
 
 /* Specific component overrides */
@@ -239,15 +336,6 @@ p, span, div, button, input, textarea, select {
 html, body {
   font-size: calc(16px * var(--font-scale)) !important;
 }
-
-/* Large phones (e.g. Samsung S22 Ultra): nền tảng lớn hơn, cap 36px cho cỡ Cực lớn */
-@media screen and (min-width: 360px) and (max-width: 480px) {
-  html {
-    font-size: clamp(16px, calc(17px * var(--font-scale)), 36px);
-  }
-}
-
-/* Landscape mode - wider screens */
 @media screen and (orientation: landscape) and (min-width: 640px) {
   #root > .max-w-lg {
     max-width: 100% !important;
