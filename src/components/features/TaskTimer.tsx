@@ -4,7 +4,13 @@ import { useTickSound } from '@/hooks/useTickSound';
 import { useVietnameseVoice } from '@/hooks/useVietnameseVoice';
 import { playChime, playCompletionSound, playBreakSound, getEncouragement } from '@/lib/soundEffects';
 import { startTimerWorker, stopTimerWorker } from '@/lib/timerWorker';
-import { Pause, Play, Square } from 'lucide-react';
+import { Pause, Play, Square, Moon, Sun } from 'lucide-react';
+
+// Helper to handle screen brightness with proper typing
+interface ScreenAPI {
+  brightness?: number;
+  setBrightness?(brightness: number): Promise<void>;
+}
 
 // Helper to handle WakeLock API with proper typing
 function requestWakeLock(): Promise<WakeLock | null> {
@@ -48,6 +54,8 @@ export function TaskTimer() {
 
   // ── Local state ──
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [screenOff, setScreenOff] = useState(false);
+  const wakeLockRef = useRef<WakeLock | null>(null);
 
   const currentTask = tasks.find((t) => t.id === timer.taskId);
 
@@ -207,6 +215,66 @@ export function TaskTimer() {
     else pauseTimer();
   }, [timer.isPaused, pauseTimer, resumeTimer]);
 
+  const toggleScreenOff = useCallback(async () => {
+    if (screenOff) {
+      // Turn screen back on
+      setScreenOff(false);
+      // Release wake lock
+      releaseWakeLock(wakeLockRef.current);
+      wakeLockRef.current = null;
+      // Restore screen brightness
+      try {
+        const nav = navigator as Navigator & { screen?: ScreenAPI };
+        const screenBrightness = nav.screen?.brightness || 1;
+        if (nav.screen?.setBrightness) {
+          await nav.screen.setBrightness(screenBrightness);
+        }
+      } catch {
+        // Fallback: just show the screen normally
+      }
+    } else {
+      // Turn screen off
+      setScreenOff(true);
+      // Request wake lock to keep timer running
+      wakeLockRef.current = await requestWakeLock();
+      // Dim screen completely
+      try {
+        const nav = navigator as Navigator & { screen?: ScreenAPI };
+        if (nav.screen?.setBrightness) {
+          await nav.screen.setBrightness(0);
+        } else {
+          // Fallback: create a black overlay
+          const overlay = document.createElement('div');
+          overlay.id = 'screen-off-overlay';
+          overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: black;
+            z-index: 9999;
+            pointer-events: none;
+          `;
+          document.body.appendChild(overlay);
+        }
+      } catch {
+        // If screen control fails, just set state
+      }
+    }
+  }, [screenOff]);
+
+  // Clean up screen off overlay on unmount
+  useEffect(() => {
+    return () => {
+      const overlay = document.getElementById('screen-off-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+      releaseWakeLock(wakeLockRef.current);
+    };
+  }, []);
+
   // ── Formatting ──
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -279,6 +347,20 @@ export function TaskTimer() {
             aria-label={timer.isPaused ? 'Tiếp tục' : 'Tạm dừng'}
           >
             {timer.isPaused ? <Play size={18} /> : <Pause size={18} />}
+          </button>
+          
+          {/* Screen Off button */}
+          <button
+            onClick={toggleScreenOff}
+            className={`size-10 rounded-xl flex items-center justify-center active:opacity-70 ${
+              screenOff
+                ? 'bg-[rgba(255,255,255,0.2)] text-white'
+                : 'bg-[rgba(0,0,0,0.2)] text-[var(--text-primary)]'
+            }`}
+            aria-label={screenOff ? 'Bật màn hình' : 'Tắt màn hình'}
+            title={screenOff ? 'Bật màn hình' : 'Tắt màn hình - Timer vẫn chạy'}
+          >
+            {screenOff ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           
           {/* STOP button - only stops timer, does NOT complete task */}

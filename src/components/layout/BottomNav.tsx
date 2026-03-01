@@ -2,12 +2,12 @@ import { useSettingsStore, useTaskStore } from '@/stores';
 import { CheckSquare, BarChart3, Sparkles, Settings, Trophy, FileText, DollarSign, CalendarDays, Heart } from 'lucide-react';
 import type { PageType } from '@/types';
 
-const NAV_ITEMS: { page: PageType; icon: typeof CheckSquare; label: string }[] = [
+const NAV_ITEMS: { page: PageType; icon: typeof CheckSquare; label: string; hidden?: boolean }[] = [
   { page: 'tasks', icon: CheckSquare, label: 'Việc' },
   { page: 'templates', icon: FileText, label: 'Mẫu' },
   { page: 'stats', icon: BarChart3, label: 'Thống kê' },
   { page: 'health', icon: Heart, label: 'Kiến thức' },
-  { page: 'ai', icon: Sparkles, label: 'Lucy' },
+  { page: 'ai', icon: Sparkles, label: 'Lucy', hidden: true },
   { page: 'achievements', icon: Trophy, label: 'Thành tích' },
   { page: 'settings', icon: Settings, label: 'Cài đặt' },
 ];
@@ -28,7 +28,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong border-t border-[var(--border-subtle)] pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-lg mx-auto flex items-center w-full">
-        {NAV_ITEMS.map(({ page, icon: Icon, label }) => {
+        {NAV_ITEMS.filter(item => !item.hidden).map(({ page, icon: Icon, label }) => {
           const isActive = currentPage === page;
           return (
             <button key={page} onClick={() => setCurrentPage(page)}

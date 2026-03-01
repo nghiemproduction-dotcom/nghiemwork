@@ -114,14 +114,40 @@ export default function SettingsPage() {
           body: JSON.stringify({
             type: 'plan',
             userData: profile,
-            messages: [{ role: 'user', content: 'Phân tích và lập kế hoạch tập luyện + dinh dưỡng cho tôi dựa trên thông tin cơ thể đã cung cấp.' }],
+            messages: [{ role: 'user', content: 'Phân tích và lập kế hoạch tập luyện + dinh dưỡng cho tôi dựa trên thông tin cơ thể đã cung cấp. Hãy tính toán và đề xuất calo mục tiêu ngày và nước mục tiêu ngày tự động.' }],
           }),
         }
       );
       if (!resp.ok) throw new Error('AI request failed');
       const data = await resp.json();
+      
+      // Extract and set automatic targets from AI response
+      if (data.recommendations) {
+        const recommendations = Array.isArray(data.recommendations) ? data.recommendations : [data.recommendations];
+        
+        // Look for calorie and water targets in recommendations
+        recommendations.forEach((rec: string) => {
+          const calorieMatch = rec.match(/(\d+)\s*kcal|calo|calories/);
+          const waterMatch = rec.match(/(\d+)\s*ml|lít|liter/);
+          
+          if (calorieMatch) {
+            const calories = parseInt(calorieMatch[1]);
+            if (calories > 0 && calories < 5000) {
+              setProfile(prev => ({ ...prev, targetCalories: calories }));
+            }
+          }
+          
+          if (waterMatch) {
+            const water = parseInt(waterMatch[1]);
+            if (water > 0 && water < 10000) {
+              setProfile(prev => ({ ...prev, targetWater: water }));
+            }
+          }
+        });
+      }
+      
       setAiResult(data);
-      toast.success('Đã phân tích và tạo kế hoạch thành công!');
+      toast.success('Đã phân tích và tạo kế hoạch thành công! Calo và nước mục tiêu đã được cập nhật.');
     } catch (error) {
       console.error('AI analysis failed:', error);
       toast.error('Không thể kết nối với AI. Vui lòng thử lại.');

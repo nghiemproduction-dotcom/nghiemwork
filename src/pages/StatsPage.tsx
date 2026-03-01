@@ -608,6 +608,56 @@ function TasksPanel({ tasks }: { tasks: Task[] }) {
     return { pending, inProgress, done, overdue };
   }, [tasks]);
 
+  const productivityMetrics = useMemo(() => {
+    const completedTasks = tasks.filter(t => t.status === 'done');
+    const totalTasks = tasks.length;
+    
+    // Average completion time
+    const completionTimes = completedTasks
+      .filter(t => t.completedAt && t.createdAt)
+      .map(t => (t.completedAt! - t.createdAt) / (1000 * 60 * 60)); // hours
+    const avgCompletionTime = completionTimes.length > 0 
+      ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length 
+      : 0;
+    
+    // Tasks per day (last 7 days)
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const recentTasks = tasks.filter(t => (t.completedAt || t.createdAt) > sevenDaysAgo);
+    const tasksPerDay = recentTasks.length / 7;
+    
+    // Focus time (total duration of completed tasks)
+    const totalFocusTime = completedTasks.reduce((total, task) => total + (task.duration || 0), 0);
+    const avgFocusTime = completedTasks.length > 0 
+      ? totalFocusTime / completedTasks.length 
+      : 0;
+    
+    // Completion rate by quadrant
+    const quadrantStats = {
+      do_first: { completed: 0, total: 0 },
+      schedule: { completed: 0, total: 0 },
+      delegate: { completed: 0, total: 0 },
+      eliminate: { completed: 0, total: 0 }
+    };
+    
+    tasks.forEach(task => {
+      if (task.quadrant) {
+        quadrantStats[task.quadrant].total++;
+        if (task.status === 'done') {
+          quadrantStats[task.quadrant].completed++;
+        }
+      }
+    });
+    
+    return {
+      avgCompletionTime,
+      tasksPerDay,
+      totalFocusTime,
+      avgFocusTime,
+      quadrantStats,
+      completionRate: totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0
+    };
+  }, [tasks]);
+
   const recentTasks = useMemo(() => {
     return tasks
       .filter(t => t.status === 'done')
@@ -615,37 +665,124 @@ function TasksPanel({ tasks }: { tasks: Task[] }) {
       .slice(0, 10);
   }, [tasks]);
 
+  const formatTime = (minutes: number) => {
+    if (minutes < 60) return `${Math.round(minutes)}p`;
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hours}h ${mins}p`;
+  };
+
   return (
     <div className="space-y-4">
+      {/* Professional Metrics Dashboard */}
+      <div className="bg-gradient-to-br from-[var(--bg-elevated)] to-[var(--bg-surface)] rounded-2xl p-4 border border-[var(--border-accent)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <BarChart3 size={16} className="text-[var(--accent-primary)]" />
+          Chỉ số năng suất chuyên nghiệp
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp size={14} className="text-green-500" />
+              <span className="text-xs text-[var(--text-muted)]">Tỷ lệ hoàn thành</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{Math.round(productivityMetrics.completionRate)}%</p>
+            <p className="text-[10px] text-[var(--text-muted)]">Tổng thể</p>
+          </div>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock3 size={14} className="text-blue-500" />
+              <span className="text-xs text-[var(--text-muted)]">TB hoàn thành</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{formatTime(productivityMetrics.avgCompletionTime * 60)}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">Thời gian</p>
+          </div>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <Activity size={14} className="text-purple-500" />
+              <span className="text-xs text-[var(--text-muted)]">Việc/ngày</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{productivityMetrics.tasksPerDay.toFixed(1)}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">7 ngày</p>
+          </div>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <Timer size={14} className="text-orange-500" />
+              <span className="text-xs text-[var(--text-muted)]">Tổng focus</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{formatTime(productivityMetrics.totalFocusTime / 60)}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">Thời gian</p>
+          </div>
+        </div>
+      </div>
+
       {/* Task Status Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-[var(--warning)]" />
-            <span className="text-xs text-[var(--text-muted)]">Đang làm</span>
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <PieIcon size={16} className="text-[var(--accent-primary)]" />
+          Phân bổ trạng thái
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full bg-[var(--warning)]" />
+              <span className="text-xs text-[var(--text-muted)]">Đang làm</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.inProgress}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">việc</p>
           </div>
-          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.inProgress}</p>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full bg-[var(--info)]" />
+              <span className="text-xs text-[var(--text-muted)]">Chờ làm</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.pending}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">việc</p>
+          </div>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full bg-[var(--success)]" />
+              <span className="text-xs text-[var(--text-muted)]">Hoàn thành</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.done}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">việc</p>
+          </div>
+          <div className="bg-[var(--bg-surface)] rounded-xl p-3 border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 rounded-full bg-[var(--error)]" />
+              <span className="text-xs text-[var(--text-muted)]">Quá hạn</span>
+            </div>
+            <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.overdue}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">việc</p>
+          </div>
         </div>
-        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-[var(--info)]" />
-            <span className="text-xs text-[var(--text-muted)]">Chờ làm</span>
-          </div>
-          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.pending}</p>
-        </div>
-        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-[var(--success)]" />
-            <span className="text-xs text-[var(--text-muted)]">Hoàn thành</span>
-          </div>
-          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.done}</p>
-        </div>
-        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 rounded-full bg-[var(--error)]" />
-            <span className="text-xs text-[var(--text-muted)]">Quá hạn</span>
-          </div>
-          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.overdue}</p>
+      </div>
+
+      {/* Quadrant Performance */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <Target size={16} className="text-[var(--accent-primary)]" />
+          Hiệu suất theo Ma trận
+        </h3>
+        <div className="space-y-2">
+          {Object.entries(productivityMetrics.quadrantStats).map(([quadrant, stats]) => {
+            const rate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+            const color = quadrant === 'do_first' ? 'text-red-500' : 
+                         quadrant === 'schedule' ? 'text-blue-500' :
+                         quadrant === 'delegate' ? 'text-yellow-500' : 'text-gray-500';
+            return (
+              <div key={quadrant} className="flex items-center justify-between p-2 bg-[var(--bg-surface)] rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${color}`} />
+                  <span className="text-sm text-[var(--text-primary)]">{QUADRANT_LABELS[quadrant as EisenhowerQuadrant].label}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[var(--text-muted)]">{stats.completed}/{stats.total}</span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{Math.round(rate)}%</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -655,16 +792,30 @@ function TasksPanel({ tasks }: { tasks: Task[] }) {
           <CheckCircle2 size={16} className="text-[var(--success)]" />
           Việc hoàn thành gần đây
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-64 overflow-y-auto">
           {recentTasks.length > 0 ? (
             recentTasks.map(task => (
               <div key={task.id} className="flex items-center justify-between p-2 bg-[var(--bg-surface)] rounded-lg">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[var(--text-primary)] truncate">{task.title}</p>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {task.quadrant && `${QUADRANT_LABELS[task.quadrant].label} • `}
-                    {task.duration && `${formatDurationShort(task.duration)}`}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    {task.quadrant && (
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        task.quadrant === 'do_first' ? 'bg-red-100 text-red-600' :
+                        task.quadrant === 'schedule' ? 'bg-blue-100 text-blue-600' :
+                        task.quadrant === 'delegate' ? 'bg-yellow-100 text-yellow-600' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {QUADRANT_LABELS[task.quadrant].label}
+                      </span>
+                    )}
+                    {task.duration && (
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {formatDurationShort(task.duration)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="text-xs text-[var(--text-muted)]">
                   {task.completedAt && format(new Date(task.completedAt), 'dd/MM HH:mm', { locale: vi })}
