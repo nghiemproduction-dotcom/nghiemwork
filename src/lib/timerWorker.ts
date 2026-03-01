@@ -18,22 +18,47 @@ let workerSupported: boolean | null = null;
 
 const WORKER_CODE = `
 let id = null;
+let lastTick = Date.now();
+let isRunning = false;
 
 function tick() {
-  self.postMessage(1);
+  lastTick = Date.now();
+  self.postMessage({ type: 'tick', timestamp: lastTick });
+}
+
+// Keep worker alive even when page is hidden
+function keepAlive() {
+  if (isRunning) {
+    // Send heartbeat every 30 seconds to prevent worker suspension
+    self.postMessage({ type: 'heartbeat', timestamp: Date.now() });
+  }
 }
 
 self.onmessage = function (e) {
   if (e.data === 'start') {
     if (id !== null) clearInterval(id);
+    isRunning = true;
     // Use simple 1000ms interval - most reliable approach
     id = setInterval(tick, 1000);
+    // Start heartbeat interval
+    setInterval(keepAlive, 30000);
     // Immediate first tick
     tick();
   } else if (e.data === 'stop') {
     if (id !== null) { clearInterval(id); id = null; }
+    isRunning = false;
+  } else if (e.data === 'ping') {
+    // Respond to ping to check if worker is still alive
+    self.postMessage({ type: 'pong', timestamp: Date.now() });
   }
 };
+
+// Prevent worker from being suspended
+self.addEventListener('online', () => {
+  if (isRunning) {
+    tick(); // Sync time when coming back online
+  }
+});
 `;
 
 function ensureWorker(): boolean {
@@ -46,8 +71,12 @@ function ensureWorker(): boolean {
     worker = new Worker(url);
     URL.revokeObjectURL(url);
 
-    worker.onmessage = () => {
-      if (currentCallback) currentCallback();
+    worker.onmessage = (e) => {
+      if (e.data.type === 'tick' || e.data.type === 'heartbeat') {
+        if (currentCallback) currentCallback();
+      } else if (e.data.type === 'pong') {
+        // Worker is alive, no action needed
+      }
     };
     worker.onerror = () => {
       workerSupported = false;
@@ -66,8 +95,12 @@ export function startTimerWorker(onTick: TickCallback): void {
   currentCallback = onTick;
 
   if (ensureWorker() && worker) {
-    worker.onmessage = () => {
-      if (currentCallback) currentCallback();
+    worker.onmessage = (e) => {
+      if (e.data.type === 'tick' || e.data.type === 'heartbeat') {
+        if (currentCallback) currentCallback();
+      } else if (e.data.type === 'pong') {
+        // Worker is alive, no action needed
+      }
     };
     worker.postMessage('start');
     // Immediate first tick for responsiveness

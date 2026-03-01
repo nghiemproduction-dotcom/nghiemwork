@@ -40,11 +40,11 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col h-full px-4 pt-4 pb-24 overflow-y-auto">
-      {/* Header */}
+      {/* Header - simplified */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-[var(--text-primary)]">VIỆC</h1>
-          <p className="text-sm text-[var(--text-muted)]">{timeStr}</p>
+          <p className="text-xs text-[var(--text-muted)] font-medium">{dayName}</p>
         </div>
         <button
           onClick={() => setCurrentPage('ai')}
@@ -53,18 +53,6 @@ export default function TasksPage() {
           <Bot size={16} />
           AI Helper
         </button>
-      </div>
-
-      {/* Ngày tháng và đồng hồ */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-xs text-[var(--text-muted)] font-medium">{dayName}</p>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">{dateStr}</h1>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)]">
-          <Clock size={14} className="text-[var(--accent-primary)]" />
-          <span className="text-sm font-semibold text-[var(--accent-primary)] tabular-nums font-mono">{timeStr}</span>
-        </div>
       </div>
 
       {/* Health Tracking Quick Access */}

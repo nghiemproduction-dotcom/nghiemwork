@@ -39,14 +39,6 @@ export function BottomNav() {
               aria-label={label}>
               <div className="relative">
                 <Icon size={iconSize} />
-                {page === 'tasks' && overdueCount > 0 && (
-                  <div className="absolute -top-1.5 -right-2 rounded-full bg-[var(--error)] flex items-center justify-center"
-                    style={{ width: `${badgeSize}px`, height: `${badgeSize}px` }}>
-                    <span className="font-bold text-white" style={{ fontSize: `${badgeFontSize}px` }}>
-                      {overdueCount > 9 ? '9+' : overdueCount}
-                    </span>
-                  </div>
-                )}
               </div>
               <span className="font-medium leading-tight" style={{ fontSize: `${fontSize}px` }}>{label}</span>
               {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-[var(--accent-primary)]" />}

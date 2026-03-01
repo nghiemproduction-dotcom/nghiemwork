@@ -222,44 +222,70 @@ export function TaskTimer() {
       // Release wake lock
       releaseWakeLock(wakeLockRef.current);
       wakeLockRef.current = null;
-      // Restore screen brightness
+      // Remove screen off overlay
+      const overlay = document.getElementById('screen-off-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+      // Wake up screen using WakeLock API
       try {
-        const nav = navigator as Navigator & { screen?: ScreenAPI };
-        const screenBrightness = nav.screen?.brightness || 1;
-        if (nav.screen?.setBrightness) {
-          await nav.screen.setBrightness(screenBrightness);
+        if ('wakeLock' in navigator) {
+          const nav = navigator as Navigator & { wakeLock: { request(type: string): Promise<unknown> } };
+          await nav.wakeLock.request('screen');
+          // Immediately release to just wake up screen
+          setTimeout(() => {
+            const lock = wakeLockRef.current;
+            if (lock) {
+              releaseWakeLock(lock);
+            }
+          }, 100);
         }
       } catch {
-        // Fallback: just show the screen normally
+        // Fallback: just remove overlay
       }
     } else {
-      // Turn screen off
+      // Turn screen off completely
       setScreenOff(true);
       // Request wake lock to keep timer running
       wakeLockRef.current = await requestWakeLock();
-      // Dim screen completely
+      
+      // Create full screen black overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'screen-off-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: black;
+        z-index: 99999;
+        pointer-events: auto;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      `;
+      
+      // Add click to wake up functionality
+      overlay.addEventListener('click', () => {
+        setScreenOff(false);
+        overlay.remove();
+        releaseWakeLock(wakeLockRef.current);
+        wakeLockRef.current = null;
+      });
+      
+      document.body.appendChild(overlay);
+      
+      // Try to use Screen Wake Lock API to keep app running
       try {
-        const nav = navigator as Navigator & { screen?: ScreenAPI };
-        if (nav.screen?.setBrightness) {
-          await nav.screen.setBrightness(0);
-        } else {
-          // Fallback: create a black overlay
-          const overlay = document.createElement('div');
-          overlay.id = 'screen-off-overlay';
-          overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: black;
-            z-index: 9999;
-            pointer-events: none;
-          `;
-          document.body.appendChild(overlay);
+        if ('wakeLock' in navigator) {
+          const nav = navigator as Navigator & { wakeLock: { request(type: string): Promise<unknown> } };
+          await nav.wakeLock.request('screen');
         }
       } catch {
-        // If screen control fails, just set state
+        // WakeLock not supported, but timer should still run with Web Worker
       }
     }
   }, [screenOff]);

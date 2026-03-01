@@ -120,71 +120,101 @@
 
 /* ==================== RESPONSIVE DESIGN ==================== */
 .container {
-  @apply w-full max-w-md mx-auto px-2;
+  @apply w-full mx-auto px-1;
 }
 
 @media (min-width: 768px) {
   .container {
-    @apply max-w-2xl px-4;
+    @apply max-w-2xl px-2;
   }
 }
 
 @media (min-width: 1024px) {
   .container {
-    @apply max-w-4xl px-6;
+    @apply max-w-4xl px-3;
   }
 }
 
 @media (min-width: 1280px) {
   .container {
-    @apply max-w-6xl px-8;
+    @apply max-w-5xl px-4;
   }
+}
+
+/* Ultra-wide screen fix */
+@media (min-width: 1440px) {
+  .container {
+    @apply max-w-4xl;
+  }
+}
+
+/* Remove all gaps - full width layout */
+.full-width {
+  width: 100vw;
+  max-width: 100vw;
+  padding-left: 0;
+  padding-right: 0;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 /* Samsung S22 Ultra specific fix */
 @media (min-width: 360px) and (max-width: 400px) {
   .container {
-    @apply px-1;
+    @apply px-0.5;
   }
   
   body {
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  /* Remove all padding for mobile */
+  .px-4 {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+  
+  .px-3 {
+    padding-left: 0.125rem !important;
+    padding-right: 0.125rem !important;
   }
 }
 
 /* Auto-resize based on screen width */
 .responsive-grid {
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 @media (max-width: 640px) {
   .responsive-grid {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
 }
 
 @media (min-width: 641px) and (max-width: 768px) {
   .responsive-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .responsive-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
   }
 }
 
 @media (min-width: 1025px) {
   .responsive-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
   }
 }
 
@@ -196,8 +226,8 @@
   }
   
   .compact-spacing {
-    padding: 0.25rem;
-    margin: 0.125rem;
+    padding: 0.125rem;
+    margin: 0.0625rem;
   }
   
   .hide-on-mobile {
@@ -206,29 +236,26 @@
   
   /* Reduce padding for mobile */
   .px-4 {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
   }
   
   .mb-4 {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem !important;
   }
   
   .gap-3 {
-    gap: 0.5rem;
+    gap: 0.25rem !important;
+  }
+  
+  .gap-2 {
+    gap: 0.125rem !important;
   }
 }
 
 @media (max-width: 768px) {
   .hide-on-tablet {
     display: none;
-  }
-}
-
-/* Ultra-wide screen fix */
-@media (min-width: 1440px) {
-  .container {
-    @apply max-w-5xl;
   }
 }
 
