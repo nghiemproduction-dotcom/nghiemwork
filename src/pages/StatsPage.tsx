@@ -32,7 +32,7 @@ const COLORS = {
 };
 
 type TimeRange = '7days' | '30days' | '90days' | 'all';
-type StatsTab = 'overview' | 'trends' | 'health' | 'quadrants' | 'insights';
+type StatsTab = 'overview' | 'trends' | 'tasks' | 'health' | 'quadrants' | 'insights';
 
 const formatDurationShort = (seconds: number): string => {
   if (seconds === 0) return '0';
@@ -153,6 +153,7 @@ export default function StatsPage() {
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: PieIcon },
     { id: 'trends', label: 'Xu hướng', icon: TrendingUp },
+    { id: 'tasks', label: 'Công việc', icon: CheckCircle2 },
     { id: 'health', label: 'Sức khỏe', icon: Activity },
     { id: 'quadrants', label: 'Ma trận', icon: Target },
     { id: 'insights', label: 'Phân tích', icon: Brain },
@@ -221,6 +222,7 @@ export default function StatsPage() {
         )}
         
         {activeTab === 'trends' && <TrendsPanel tasks={filteredTasks} timeRange={timeRange} />}
+        {activeTab === 'tasks' && <TasksPanel tasks={filteredTasks} />}
         {activeTab === 'health' && <HealthPanel timeRange={timeRange} />}
         {activeTab === 'quadrants' && <QuadrantsPanel tasks={filteredTasks} />}
         {activeTab === 'insights' && <InsightsPanel tasks={filteredTasks} />}
@@ -589,6 +591,92 @@ function InsightsPanel({ tasks }: { tasks: Task[] }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== TASKS TAB COMPONENT ====================
+function TasksPanel({ tasks }: { tasks: Task[] }) {
+  const taskStats = useMemo(() => {
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    const overdue = tasks.filter(t => t.status === 'overdue').length;
+    
+    return { pending, inProgress, done, overdue };
+  }, [tasks]);
+
+  const recentTasks = useMemo(() => {
+    return tasks
+      .filter(t => t.status === 'done')
+      .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0))
+      .slice(0, 10);
+  }, [tasks]);
+
+  return (
+    <div className="space-y-4">
+      {/* Task Status Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full bg-[var(--warning)]" />
+            <span className="text-xs text-[var(--text-muted)]">Đang làm</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.inProgress}</p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full bg-[var(--info)]" />
+            <span className="text-xs text-[var(--text-muted)]">Chờ làm</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.pending}</p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full bg-[var(--success)]" />
+            <span className="text-xs text-[var(--text-muted)]">Hoàn thành</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.done}</p>
+        </div>
+        <div className="bg-[var(--bg-elevated)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full bg-[var(--error)]" />
+            <span className="text-xs text-[var(--text-muted)]">Quá hạn</span>
+          </div>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{taskStats.overdue}</p>
+        </div>
+      </div>
+
+      {/* Recent Completed Tasks */}
+      <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-subtle)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-[var(--success)]" />
+          Việc hoàn thành gần đây
+        </h3>
+        <div className="space-y-2">
+          {recentTasks.length > 0 ? (
+            recentTasks.map(task => (
+              <div key={task.id} className="flex items-center justify-between p-2 bg-[var(--bg-surface)] rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">{task.title}</p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {task.quadrant && `${QUADRANT_LABELS[task.quadrant].label} • `}
+                    {task.duration && `${formatDurationShort(task.duration)}`}
+                  </p>
+                </div>
+                <div className="text-xs text-[var(--text-muted)]">
+                  {task.completedAt && format(new Date(task.completedAt), 'dd/MM HH:mm', { locale: vi })}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <CheckCircle2 size={32} className="mx-auto mb-2 text-[var(--text-muted)]" />
+              <p className="text-sm text-[var(--text-muted)]">Chưa có việc nào hoàn thành</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

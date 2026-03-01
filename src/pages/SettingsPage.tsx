@@ -74,7 +74,7 @@ export default function SettingsPage() {
   // Weight loss planning state
   const [showWeightPlanning, setShowWeightPlanning] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiResult, setAiResult] = useState<{ estimatedTime?: string; issues?: string[]; recommendations?: string[] } | null>(null);
   const [profile, setProfile] = useState({
     name: user?.username || '',
     age: 30,
@@ -95,7 +95,7 @@ export default function SettingsPage() {
     sessions: [],
   });
 
-  const updateField = (field: string, value: any) => {
+  const updateField = (field: string, value: string | number) => {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
 

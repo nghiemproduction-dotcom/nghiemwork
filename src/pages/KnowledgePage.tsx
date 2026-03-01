@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { exercises, meals, knowledgeArticles } from '@/data/healthData';
-import { ChevronDown, ChevronUp, BookOpen, UtensilsCrossed, Search, Filter, X, Heart, Activity, Brain, BarChart3 } from 'lucide-react';
-import { useSettingsStore } from '@/stores';
+import { ChevronDown, ChevronUp, BookOpen, UtensilsCrossed, Search, Filter, X, Heart, Activity, Brain, BarChart3, Play, Edit3, Plus, Bot, Sparkles, Clock, Timer } from 'lucide-react';
+import { useSettingsStore, useChatStore } from '@/stores';
 import type { Meal, KnowledgeArticle } from '@/types';
 
 type TabType = 'meals' | 'knowledge';
@@ -12,7 +12,10 @@ export default function KnowledgePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
+  const [editingArticle, setEditingArticle] = useState<KnowledgeArticle | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const setCurrentPage = useSettingsStore(s => s.setCurrentPage);
+  const { addMessage, setLoading } = useChatStore();
 
   // Get unique categories
   const mealCategories = useMemo(() => {
@@ -65,7 +68,27 @@ export default function KnowledgePage() {
     <div className="flex flex-col h-full px-4 pt-4 pb-24 overflow-y-auto">
       {/* Header */}
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-3">MENU KIẾN THỨC</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">MENU KIẾN THỨC</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage('ai')}
+              className="px-3 py-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-sm font-medium flex items-center gap-2 active:scale-95"
+            >
+              <Bot size={16} />
+              AI Helper
+            </button>
+            {activeTab === 'knowledge' && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-3 py-2 bg-[var(--accent-primary)] text-[var(--bg-base)] rounded-lg text-sm font-medium flex items-center gap-2 active:scale-95"
+              >
+                <Plus size={16} />
+                Thêm bài viết
+              </button>
+            )}
+          </div>
+        </div>
         
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-4">
@@ -291,6 +314,122 @@ export default function KnowledgePage() {
                 <div className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
                   {selectedArticle.content}
                 </div>
+              </div>
+              
+              {/* AI Actions */}
+              <div className="flex gap-2 pt-4 border-t border-[var(--border-subtle)]">
+                <button
+                  onClick={() => {
+                    setCurrentPage('ai');
+                    addMessage('user', `Hãy giúp tôi cải thiện bài viết "${selectedArticle.title}" với nội dung chuyên nghiệp hơn`);
+                    setSelectedArticle(null);
+                  }}
+                  className="flex-1 px-3 py-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-sm font-medium flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Sparkles size={14} />
+                  Cải thiện với AI
+                </button>
+                <button
+                  onClick={() => setEditingArticle(selectedArticle)}
+                  className="flex-1 px-3 py-2 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-lg text-sm font-medium flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Edit3 size={14} />
+                  Chỉnh sửa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Article Modal */}
+      {(showAddModal || editingArticle) && (
+        <div className="fixed inset-0 z-50 bg-[var(--bg-overlay)] flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-elevated)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-[var(--border-accent)]">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-subtle)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                {editingArticle ? 'Chỉnh sửa bài viết' : 'Thêm bài viết mới'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingArticle(null);
+                }}
+                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface)] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Tiêu đề</label>
+                <input
+                  type="text"
+                  value={editingArticle ? editingArticle.title : ''}
+                  onChange={e => setEditingArticle(editingArticle ? {...editingArticle, title: e.target.value} : {id: '', title: e.target.value, summary: '', content: '', tags: []})}
+                  placeholder="Nhập tiêu đề bài viết..."
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)]"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Tóm tắt</label>
+                <textarea
+                  value={editingArticle ? editingArticle.summary : ''}
+                  onChange={e => setEditingArticle(editingArticle ? {...editingArticle, summary: e.target.value} : {...editingArticle!, summary: e.target.value})}
+                  placeholder="Nhập tóm tắt bài viết..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)] resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Nội dung</label>
+                <textarea
+                  value={editingArticle ? editingArticle.content : ''}
+                  onChange={e => setEditingArticle(editingArticle ? {...editingArticle, content: e.target.value} : {...editingArticle!, content: e.target.value})}
+                  placeholder="Nhập nội dung chi tiết..."
+                  rows={8}
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)] resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-[var(--text-muted)] font-medium block mb-1">Tags (cách nhau bằng dấu phẩy)</label>
+                <input
+                  type="text"
+                  value={editingArticle ? editingArticle.tags.join(', ') : ''}
+                  onChange={e => setEditingArticle(editingArticle ? {...editingArticle, tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)} : {...editingArticle!, tags: e.target.value.split(',').map(t => t.trim()).filter(t => t)})}
+                  placeholder="VD: dinh dưỡng, tập luyện, sức khỏe"
+                  className="w-full px-3 py-2 bg-[var(--bg-surface)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)]"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (editingArticle) {
+                      setCurrentPage('ai');
+                      addMessage('user', `Hãy giúp tôi viết bài viết về "${editingArticle.title}" với nội dung chuyên nghiệp, đầy đủ thông tin và dễ hiểu`);
+                    }
+                    setShowAddModal(false);
+                    setEditingArticle(null);
+                  }}
+                  className="flex-1 px-3 py-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-sm font-medium flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Bot size={14} />
+                  Viết với AI
+                </button>
+                <button
+                  onClick={() => {
+                    // Save logic here
+                    setShowAddModal(false);
+                    setEditingArticle(null);
+                  }}
+                  className="flex-[2] px-3 py-2 bg-[var(--accent-primary)] text-[var(--bg-base)] rounded-lg text-sm font-medium active:scale-95"
+                >
+                  Lưu bài viết
+                </button>
               </div>
             </div>
           </div>

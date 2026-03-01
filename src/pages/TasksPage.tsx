@@ -1,14 +1,17 @@
 import { useTaskStore, useSettingsStore } from '@/stores';
 import { TaskList } from '@/components/features/TaskList';
 import { AddTaskInput } from '@/components/features/AddTaskInput';
-import { CalendarDays, Clock, Heart, Activity } from 'lucide-react';
+import { CalendarDays, Clock, Heart, Activity, Bot, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type {} from '@/types';
 import { getNowInTimezone } from '@/lib/notifications';
 
 export default function TasksPage() {
   const timer = useTaskStore((s) => s.timer);
+  const tasks = useTaskStore(s => s.tasks);
+  const setCurrentPage = useSettingsStore(s => s.setCurrentPage);
   const timezone = useSettingsStore((s) => s.timezone);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -36,9 +39,24 @@ export default function TasksPage() {
   const hasTimer = timer.isRunning || timer.isPaused;
 
   return (
-    <div className="flex flex-col h-full px-4" style={{ paddingTop: hasTimer ? '72px' : '0' }}>
-      {/* Header - Ngày tháng và đồng hồ */}
-      <div className="flex items-center justify-between pt-4 pb-4">
+    <div className="flex flex-col h-full px-4 pt-4 pb-24 overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">VIỆC</h1>
+          <p className="text-sm text-[var(--text-muted)]">{timeStr}</p>
+        </div>
+        <button
+          onClick={() => setCurrentPage('ai')}
+          className="px-3 py-2 bg-[var(--accent-dim)] text-[var(--accent-primary)] rounded-lg text-sm font-medium flex items-center gap-2 active:scale-95"
+        >
+          <Bot size={16} />
+          AI Helper
+        </button>
+      </div>
+
+      {/* Ngày tháng và đồng hồ */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-xs text-[var(--text-muted)] font-medium">{dayName}</p>
           <h1 className="text-xl font-bold text-[var(--text-primary)]">{dateStr}</h1>
